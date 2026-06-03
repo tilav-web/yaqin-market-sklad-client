@@ -5,6 +5,7 @@ import { Power, PowerOff, Search, Star } from 'lucide-react';
 import { useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
+import { Pagination } from '@/components/admin/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
@@ -28,16 +29,24 @@ interface AdminShop {
   createdAt: string;
 }
 
+interface ShopsPage {
+  items: AdminShop[];
+  total: number;
+}
+
+const PAGE_SIZE = 20;
+
 export default function ShopsAdminPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [submitted, setSubmitted] = useState('');
+  const [page, setPage] = useState(0);
 
   const shopsQuery = useQuery({
-    queryKey: ['admin', 'shops', submitted],
+    queryKey: ['admin', 'shops', submitted, page],
     queryFn: async () => {
-      const res = await api.get<AdminShop[]>('/admin/shops', {
-        params: submitted ? { search: submitted } : undefined,
+      const res = await api.get<ShopsPage>('/admin/shops', {
+        params: { search: submitted || undefined, limit: PAGE_SIZE, offset: page * PAGE_SIZE },
       });
       return res.data;
     },
@@ -51,7 +60,8 @@ export default function ShopsAdminPage() {
     onError: (e) => alert(extractErrorMessage(e)),
   });
 
-  const shops = shopsQuery.data ?? [];
+  const shops = shopsQuery.data?.items ?? [];
+  const total = shopsQuery.data?.total ?? 0;
 
   return (
     <div className="space-y-6 p-6">
@@ -65,6 +75,7 @@ export default function ShopsAdminPage() {
         className="flex max-w-md items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault();
+          setPage(0);
           setSubmitted(search.trim());
         }}>
         <div className="relative flex-1">
@@ -181,6 +192,8 @@ export default function ShopsAdminPage() {
           </tbody>
         </table>
       </Card>
+
+      <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPage={setPage} />
     </div>
   );
 }

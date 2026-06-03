@@ -5,6 +5,7 @@ import { Search, ShieldCheck, ShieldOff, UserX, UserCheck } from 'lucide-react';
 import { useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
+import { Pagination } from '@/components/admin/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
@@ -20,16 +21,24 @@ interface AdminUser {
   createdAt: string;
 }
 
+interface UsersPage {
+  items: AdminUser[];
+  total: number;
+}
+
+const PAGE_SIZE = 20;
+
 export default function UsersAdminPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [submitted, setSubmitted] = useState('');
+  const [page, setPage] = useState(0);
 
   const usersQuery = useQuery({
-    queryKey: ['admin', 'users', submitted],
+    queryKey: ['admin', 'users', submitted, page],
     queryFn: async () => {
-      const res = await api.get<AdminUser[]>('/admin/users', {
-        params: submitted ? { search: submitted } : undefined,
+      const res = await api.get<UsersPage>('/admin/users', {
+        params: { search: submitted || undefined, limit: PAGE_SIZE, offset: page * PAGE_SIZE },
       });
       return res.data;
     },
@@ -51,7 +60,8 @@ export default function UsersAdminPage() {
     onError: (e) => alert(extractErrorMessage(e)),
   });
 
-  const users = usersQuery.data ?? [];
+  const users = usersQuery.data?.items ?? [];
+  const total = usersQuery.data?.total ?? 0;
 
   return (
     <div className="space-y-6 p-6">
@@ -65,6 +75,7 @@ export default function UsersAdminPage() {
         className="flex max-w-md items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault();
+          setPage(0);
           setSubmitted(search.trim());
         }}>
         <div className="relative flex-1">
@@ -171,6 +182,8 @@ export default function UsersAdminPage() {
           </tbody>
         </table>
       </Card>
+
+      <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPage={setPage} />
     </div>
   );
 }
