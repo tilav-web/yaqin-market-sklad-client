@@ -1,8 +1,13 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { Check, MapPin, Store, User, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
+import { PageHeader, StatPill } from '@/components/admin/page-header';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
 
 interface SellerApplication {
@@ -16,28 +21,48 @@ interface SellerApplication {
   status: 'pending' | 'approved' | 'rejected';
   rejectionReason: string | null;
   createdAt: string;
-  user: {
-    id: string;
-    phone: string;
-    name: string | null;
-  };
+  user: { id: string; phone: string; name: string | null };
 }
+
+type Filter = 'pending' | 'approved' | 'rejected' | 'all';
+
+const FILTERS: { key: Filter; label: string }[] = [
+  { key: 'pending', label: 'Kutilmoqda' },
+  { key: 'approved', label: 'Tasdiqlandi' },
+  { key: 'rejected', label: 'Rad etildi' },
+  { key: 'all', label: 'Hammasi' },
+];
+
+const STATUS: Record<SellerApplication['status'], { label: string; variant: 'warning' | 'success' | 'danger' }> = {
+  pending: { label: 'Kutilmoqda', variant: 'warning' },
+  approved: { label: 'Tasdiqlandi', variant: 'success' },
+  rejected: { label: 'Rad etildi', variant: 'danger' },
+};
 
 export default function ApplicationsPage() {
   const qc = useQueryClient();
-  const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const [filter, setFilter] = useState<Filter>('pending');
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
   const appsQuery = useQuery({
-    queryKey: ['admin', 'applications', filter],
+    queryKey: ['admin', 'applications'],
     queryFn: async () => {
-      const res = await api.get<SellerApplication[]>('/sellers/admin/applications', {
-        params: filter === 'all' ? {} : { status: filter },
-      });
+      const res = await api.get<SellerApplication[]>('/sellers/admin/applications');
       return res.data;
     },
   });
+
+  const all = useMemo(() => appsQuery.data ?? [], [appsQuery.data]);
+  const counts = useMemo(
+    () => ({
+      pending: all.filter((a) => a.status === 'pending').length,
+      approved: all.filter((a) => a.status === 'approved').length,
+      rejected: all.filter((a) => a.status === 'rejected').length,
+    }),
+    [all],
+  );
+  const list = filter === 'all' ? all : all.filter((a) => a.status === filter);
 
   const approve = useMutation({
     mutationFn: async (id: string) => {
@@ -60,140 +85,143 @@ export default function ApplicationsPage() {
   });
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-1 text-[#0046AD]">Seller arizalari</h1>
-      <p className="text-slate-600 text-sm mb-4">Sotuvchi bo&apos;lish arizalarini tasdiqlang yoki rad eting</p>
+    <div className="space-y-6 p-6">
+      <PageHeader
+        eyebrow="Onboarding"
+        title="Seller arizalari"
+        description="Foydalanuvchilar sotuvchi bo'lish uchun yuborgan arizalarni ko'rib chiqing va tasdiqlang."
+      />
 
-      <div className="flex gap-2 mb-4">
-        {(['pending', 'approved', 'rejected', 'all'] as const).map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`px-4 py-2 rounded-md text-sm font-semibold ${
-              filter === s ? 'bg-[#0046AD] text-white' : 'bg-white text-slate-600 border border-slate-200'
-            }`}>
-            {s === 'pending'
-              ? 'Kutilmoqda'
-              : s === 'approved'
-                ? 'Tasdiqlandi'
-                : s === 'rejected'
-                  ? 'Rad etildi'
-                  : 'Hammasi'}
-          </button>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatPill label="Kutilmoqda" value={counts.pending} />
+        <StatPill label="Tasdiqlangan" value={counts.approved} />
+        <StatPill label="Rad etilgan" value={counts.rejected} />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {FILTERS.map((f) => (
+          <Button
+            key={f.key}
+            size="sm"
+            variant={filter === f.key ? 'default' : 'outline'}
+            onClick={() => setFilter(f.key)}>
+            {f.label}
+          </Button>
         ))}
       </div>
 
       {appsQuery.isLoading ? (
-        <p>Yuklanmoqda...</p>
-      ) : appsQuery.data && appsQuery.data.length > 0 ? (
         <div className="grid gap-4">
-          {appsQuery.data.map((app) => (
-            <div key={app.id} className="bg-white rounded-lg p-4 border border-slate-200 shadow-sm">
-              <div className="flex items-start gap-4">
-                {app.shopPhotos[0] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={app.shopPhotos[0]}
-                    alt={app.shopName}
-                    className="w-32 h-32 object-cover rounded-md bg-slate-100"
-                  />
-                ) : (
-                  <div className="w-32 h-32 bg-slate-100 rounded-md flex items-center justify-center text-4xl">
-                    🏪
-                  </div>
-                )}
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h2 className="text-xl font-bold">{app.shopName}</h2>
-                      <p className="text-sm text-slate-600 mt-1">{app.shopAddress}</p>
-                      <p className="text-xs text-slate-500 mt-2">
-                        📍 {app.shopLatitude.toFixed(5)}, {app.shopLongitude.toFixed(5)}
-                      </p>
-                      {app.stir && <p className="text-xs text-slate-500">STIR: {app.stir}</p>}
-                      <p className="text-xs text-slate-500 mt-2">
-                        Foydalanuvchi: {app.user.name ?? '—'} ({app.user.phone})
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        {new Date(app.createdAt).toLocaleString('uz-UZ')}
-                      </p>
-                    </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold text-white ${
-                        app.status === 'pending'
-                          ? 'bg-amber-500'
-                          : app.status === 'approved'
-                            ? 'bg-green-500'
-                            : 'bg-red-600'
-                      }`}>
-                      {app.status === 'pending'
-                        ? 'Kutilmoqda'
-                        : app.status === 'approved'
-                          ? 'Tasdiqlandi'
-                          : 'Rad etildi'}
-                    </span>
-                  </div>
-
-                  {app.status === 'pending' && (
-                    <div className="flex gap-2 mt-4">
-                      <button
-                        onClick={() => approve.mutate(app.id)}
-                        disabled={approve.isPending}
-                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 disabled:opacity-50">
-                        ✓ Tasdiqlash
-                      </button>
-                      <button
-                        onClick={() => setRejectingId(app.id)}
-                        className="px-4 py-2 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700">
-                        ✗ Rad etish
-                      </button>
-                    </div>
-                  )}
-
-                  {app.status === 'rejected' && app.rejectionReason && (
-                    <p className="mt-2 text-sm text-red-700 bg-red-50 p-2 rounded">
-                      Sabab: {app.rejectionReason}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
+          {[0, 1].map((i) => (
+            <div key={i} className="h-40 animate-pulse rounded-2xl bg-muted" />
           ))}
         </div>
+      ) : list.length === 0 ? (
+        <Card className="flex flex-col items-center gap-2 border-dashed py-14 text-center">
+          <Store className="size-8 text-muted-foreground" />
+          <p className="text-sm font-semibold text-foreground">Bu bo'limda ariza yo'q</p>
+        </Card>
       ) : (
-        <p className="text-slate-600">Arizalar yo&apos;q</p>
+        <div className="grid gap-4 xl:grid-cols-2">
+          {list.map((app) => {
+            const st = STATUS[app.status];
+            return (
+              <Card key={app.id} className="overflow-hidden p-5">
+                <div className="flex items-start gap-4">
+                  <div className="flex size-16 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-primary">
+                    <Store className="size-7" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-base font-bold text-foreground">{app.shopName}</p>
+                        <p className="mt-0.5 truncate text-sm text-muted-foreground">{app.shopAddress}</p>
+                      </div>
+                      <Badge variant={st.variant}>{st.label}</Badge>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <User className="size-4 text-primary" />
+                        <span className="text-foreground">{app.user.name ?? '—'}</span>
+                        <span>· {app.user.phone}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <MapPin className="size-4 text-primary" />
+                        {app.shopLatitude.toFixed(4)}, {app.shopLongitude.toFixed(4)}
+                      </div>
+                    </div>
+
+                    {app.stir ? (
+                      <p className="mt-1 text-xs text-muted-foreground">STIR: {app.stir}</p>
+                    ) : null}
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {new Date(app.createdAt).toLocaleString('uz-UZ')}
+                    </p>
+
+                    {app.status === 'rejected' && app.rejectionReason ? (
+                      <p className="mt-3 rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">
+                        Sabab: {app.rejectionReason}
+                      </p>
+                    ) : null}
+
+                    {app.status === 'pending' ? (
+                      <div className="mt-4 flex gap-2">
+                        <Button
+                          variant="success"
+                          size="sm"
+                          disabled={approve.isPending}
+                          onClick={() => approve.mutate(app.id)}>
+                          <Check className="size-4" />
+                          Tasdiqlash
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => setRejectingId(app.id)}>
+                          <X className="size-4" />
+                          Rad etish
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       )}
 
-      {rejectingId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-lg font-bold mb-3">Arizani rad etish</h2>
+      {rejectingId ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
+          <Card className="w-full max-w-md p-6">
+            <h2 className="text-lg font-bold text-foreground">Arizani rad etish</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Sabab foydalanuvchiga ko'rsatiladi.</p>
             <textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="Rad etish sababi"
-              className="w-full p-3 border border-slate-300 rounded-md mb-3"
               rows={3}
+              className="mt-4 w-full rounded-lg border border-input bg-card p-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
             />
-            <div className="flex gap-2 justify-end">
-              <button
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setRejectingId(null);
                   setRejectReason('');
-                }}
-                className="px-4 py-2 text-slate-600">
+                }}>
                 Bekor qilish
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
                 disabled={!rejectReason || reject.isPending}
-                onClick={() => reject.mutate({ id: rejectingId, reason: rejectReason })}
-                className="px-4 py-2 bg-red-600 text-white rounded-md disabled:opacity-50">
+                onClick={() => reject.mutate({ id: rejectingId, reason: rejectReason })}>
                 Rad etish
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

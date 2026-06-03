@@ -4,6 +4,8 @@ import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { Button } from '@/components/ui/button';
+import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage, tokenStore } from '@/lib/api';
 
 export default function LoginPage() {
@@ -34,78 +36,83 @@ export default function LoginPage() {
   });
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6">
-      <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-md border border-slate-200">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-full bg-[#0046AD] border-4 border-[#E1251B] flex items-center justify-center text-white font-extrabold text-xl">
+    <main className="flex min-h-screen items-center justify-center bg-muted/40 p-6">
+      <Card className="w-full max-w-sm p-8">
+        <div className="mb-6 flex items-center gap-3">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-xl font-extrabold text-primary-foreground shadow-sm">
             Y
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[#0046AD]">Yaqin Market</h1>
-            <p className="text-xs text-slate-600">Admin panel</p>
+            <h1 className="text-lg font-bold text-foreground">Yaqin Market</h1>
+            <p className="text-xs text-muted-foreground">Admin panel</p>
           </div>
         </div>
 
         {stage === 'phone' ? (
-          <>
-            <label className="block text-sm font-semibold mb-2">Telefon raqam</label>
-            <div className="flex gap-2 mb-4">
-              <div className="px-3 py-3 bg-slate-100 rounded-md font-semibold border border-slate-200">
-                +998
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Telefon raqam</label>
+              <div className="flex gap-2">
+                <div className="flex h-9 items-center rounded-lg border border-input bg-muted px-3 text-sm font-semibold text-foreground">
+                  +998
+                </div>
+                <Input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="90 123 45 67"
+                  autoFocus
+                  inputMode="tel"
+                />
               </div>
-              <input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="90 123 45 67"
-                className="flex-1 px-4 py-3 rounded-md bg-slate-50 border border-slate-200 text-lg"
-                autoFocus
-                inputMode="tel"
-              />
             </div>
-            {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
-            <button
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            <Button
+              className="w-full"
               disabled={phone.replace(/\D/g, '').length !== 9 || requestOtp.isPending}
               onClick={() => {
                 setError(null);
                 requestOtp.mutate();
-              }}
-              className="w-full bg-[#0046AD] text-white font-bold py-3 rounded-md disabled:opacity-50">
+              }}>
               {requestOtp.isPending ? 'Yuborilmoqda…' : 'OTP yuborish'}
-            </button>
-          </>
+            </Button>
+          </div>
         ) : (
-          <>
-            <label className="block text-sm font-semibold mb-2">Tasdiq kodi</label>
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="123456"
-              className="w-full px-4 py-3 rounded-md bg-slate-50 border border-slate-200 text-2xl tracking-widest text-center font-bold mb-4"
-              autoFocus
-              inputMode="numeric"
-            />
-            {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
-            <button
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Tasdiq kodi</label>
+              <Input
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="123456"
+                autoFocus
+                inputMode="numeric"
+                className="h-12 text-center text-2xl font-bold tracking-[0.3em]"
+              />
+            </div>
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            <Button
+              className="w-full"
               disabled={code.length !== 6 || verifyOtp.isPending}
               onClick={() => {
                 setError(null);
                 verifyOtp.mutate();
-              }}
-              className="w-full bg-[#E1251B] text-white font-bold py-3 rounded-md disabled:opacity-50">
+              }}>
               {verifyOtp.isPending ? 'Tekshirilmoqda…' : 'Kirish'}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full"
               onClick={() => {
                 setStage('phone');
                 setCode('');
                 setError(null);
-              }}
-              className="w-full text-slate-600 text-sm py-2 mt-2">
+              }}>
               Telefon raqamni o&apos;zgartirish
-            </button>
-          </>
+            </Button>
+          </div>
         )}
-      </div>
+      </Card>
     </main>
   );
 }

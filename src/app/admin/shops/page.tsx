@@ -1,23 +1,22 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { Star } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { PageHeader } from '@/components/admin/page-header';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import { api } from '@/lib/api';
 
 interface ShopRow {
   id: string;
   name: string;
   address: string;
-  ownerId: string;
-  latitude: number;
-  longitude: number;
   isOpenManual: boolean;
   ratingAverage: number;
   ratingCount: number;
   minOrderPrice: number;
-  isActive: boolean;
-  createdAt: string;
 }
 
 export default function ShopsAdminPage() {
@@ -26,7 +25,7 @@ export default function ShopsAdminPage() {
   useEffect(() => {
     navigator.geolocation?.getCurrentPosition(
       (p) => setCoords({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => setCoords({ lat: 41.3, lng: 69.27 }),
+      () => setCoords({ lat: 38.8446827, lng: 65.7803532 }),
     );
   }, []);
 
@@ -34,58 +33,70 @@ export default function ShopsAdminPage() {
     queryKey: ['admin', 'shops', coords?.lat, coords?.lng],
     queryFn: async () => {
       if (!coords) return [];
-      const res = await api.get<ShopRow[]>('/shops/nearby', {
-        params: { lat: coords.lat, lng: coords.lng },
-      });
+      const res = await api.get<ShopRow[]>('/shops/nearby', { params: { lat: coords.lat, lng: coords.lng } });
       return res.data;
     },
     enabled: !!coords,
   });
 
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-[#0046AD] mb-1">Do&apos;konlar</h1>
-      <p className="text-slate-600 text-sm mb-4">
-        {shopsQuery.data?.length ?? 0} ta do&apos;kon platformaning xizmatida
-      </p>
+  const shops = shopsQuery.data ?? [];
 
-      <div className="bg-white rounded-lg overflow-hidden border border-slate-200">
+  return (
+    <div className="space-y-6 p-6">
+      <PageHeader
+        eyebrow="Tarmoq"
+        title="Do'konlar"
+        description={`${shops.length} ta do'kon platformaning xizmatida.`}
+      />
+
+      <Card className="overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-100 text-left">
-            <tr>
-              <th className="px-4 py-2 font-semibold">Nomi</th>
-              <th className="px-4 py-2 font-semibold">Manzili</th>
-              <th className="px-4 py-2 font-semibold">Reyting</th>
-              <th className="px-4 py-2 font-semibold">Min</th>
-              <th className="px-4 py-2 font-semibold">Holat</th>
+          <thead>
+            <tr className="border-b border-border bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <th className="px-5 py-3 font-semibold">Nomi</th>
+              <th className="px-5 py-3 font-semibold">Manzili</th>
+              <th className="px-5 py-3 font-semibold">Reyting</th>
+              <th className="px-5 py-3 font-semibold">Min. buyurtma</th>
+              <th className="px-5 py-3 font-semibold">Holat</th>
             </tr>
           </thead>
           <tbody>
-            {shopsQuery.data?.map((s) => (
-              <tr key={s.id} className="border-t border-slate-100">
-                <td className="px-4 py-2 font-medium">{s.name}</td>
-                <td className="px-4 py-2 text-slate-600">{s.address}</td>
-                <td className="px-4 py-2">⭐ {s.ratingAverage.toFixed(1)} ({s.ratingCount})</td>
-                <td className="px-4 py-2">{s.minOrderPrice.toLocaleString()} so&apos;m</td>
-                <td className="px-4 py-2">
-                  {s.isOpenManual ? (
-                    <span className="text-green-600 font-semibold">Ochiq</span>
-                  ) : (
-                    <span className="text-red-600 font-semibold">Yopiq</span>
-                  )}
+            {shops.map((s) => (
+              <tr key={s.id} className="border-b border-border last:border-0 transition-colors hover:bg-muted/40">
+                <td className="px-5 py-3 font-semibold text-foreground">{s.name}</td>
+                <td className="max-w-xs truncate px-5 py-3 text-muted-foreground">{s.address}</td>
+                <td className="px-5 py-3">
+                  <span className="inline-flex items-center gap-1 text-foreground">
+                    <Star className="size-3.5 fill-amber-400 text-amber-400" />
+                    {s.ratingAverage.toFixed(1)}
+                    <span className="text-muted-foreground">({s.ratingCount})</span>
+                  </span>
+                </td>
+                <td className="px-5 py-3 text-foreground">{s.minOrderPrice.toLocaleString()} so&apos;m</td>
+                <td className="px-5 py-3">
+                  <Badge variant={s.isOpenManual ? 'success' : 'danger'}>
+                    {s.isOpenManual ? 'Ochiq' : 'Yopiq'}
+                  </Badge>
                 </td>
               </tr>
             ))}
-            {(!shopsQuery.data || shopsQuery.data.length === 0) && (
+            {!shopsQuery.isLoading && shops.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-center py-8 text-slate-500">
+                <td colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
                   Hozircha do&apos;kon yo&apos;q
                 </td>
               </tr>
-            )}
+            ) : null}
+            {shopsQuery.isLoading ? (
+              <tr>
+                <td colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
+                  Yuklanmoqda…
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
-      </div>
+      </Card>
     </div>
   );
 }

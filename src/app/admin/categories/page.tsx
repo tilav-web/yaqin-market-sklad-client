@@ -1,8 +1,13 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
+import { PageHeader } from '@/components/admin/page-header';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
 
 interface Category {
@@ -33,24 +38,22 @@ export default function CategoriesPage() {
     },
   });
 
+  const closeForm = () => {
+    setCreating(false);
+    setParentId(null);
+    setSlug('');
+    setNameUzLatn('');
+    setNameUzCyrl('');
+    setNameRu('');
+  };
+
   const create = useMutation({
     mutationFn: async () => {
-      await api.post('/categories', {
-        slug,
-        nameUzLatn,
-        nameUzCyrl,
-        nameRu,
-        parentId: parentId ?? undefined,
-      });
+      await api.post('/categories', { slug, nameUzLatn, nameUzCyrl, nameRu, parentId: parentId ?? undefined });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'categories'] });
-      setCreating(false);
-      setSlug('');
-      setNameUzLatn('');
-      setNameUzCyrl('');
-      setNameRu('');
-      setParentId(null);
+      closeForm();
     },
     onError: (e) => alert(extractErrorMessage(e)),
   });
@@ -63,57 +66,67 @@ export default function CategoriesPage() {
   });
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#0046AD]">Kategoriyalar</h1>
-          <p className="text-slate-600 text-sm">Mahsulot kategoriyalari daraxti</p>
-        </div>
-        <button
-          onClick={() => setCreating(true)}
-          className="px-4 py-2 bg-[#0046AD] text-white font-semibold rounded-md">
-          + Yangi kategoriya
-        </button>
-      </div>
+    <div className="space-y-6 p-6">
+      <PageHeader
+        eyebrow="Katalog"
+        title="Kategoriyalar"
+        description="Mahsulot kategoriyalari daraxti — uch tilda."
+        actions={
+          <Button onClick={() => setCreating(true)}>
+            <Plus className="size-4" />
+            Yangi kategoriya
+          </Button>
+        }
+      />
 
-      <div className="bg-white rounded-lg p-4 border border-slate-200">
+      <Card className="p-3">
         {treeQuery.data && treeQuery.data.length > 0 ? (
-          <CategoryList items={treeQuery.data} onAddChild={(id) => { setParentId(id); setCreating(true); }} onDelete={(id) => remove.mutate(id)} />
+          <CategoryList
+            items={treeQuery.data}
+            onAddChild={(id) => {
+              setParentId(id);
+              setCreating(true);
+            }}
+            onDelete={(id) => remove.mutate(id)}
+          />
         ) : (
-          <p className="text-slate-600">Kategoriya yo&apos;q</p>
+          <p className="px-3 py-10 text-center text-sm text-muted-foreground">Kategoriya yo&apos;q</p>
         )}
-      </div>
+      </Card>
 
-      {creating && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full space-y-3">
-            <h2 className="text-lg font-bold">Yangi kategoriya</h2>
-            {parentId && (
-              <p className="text-xs text-slate-600">Ota kategoriya ID: {parentId}</p>
-            )}
-            <Input label="Slug (URL)" value={slug} onChange={setSlug} placeholder="oziq-ovqat" />
-            <Input label="Nomi (lotin)" value={nameUzLatn} onChange={setNameUzLatn} placeholder="Oziq-ovqat" />
-            <Input label="Nomi (kirill)" value={nameUzCyrl} onChange={setNameUzCyrl} placeholder="Озиқ-овқат" />
-            <Input label="Nomi (русский)" value={nameRu} onChange={setNameRu} placeholder="Продукты" />
-            <div className="flex gap-2 justify-end pt-3">
-              <button
-                onClick={() => {
-                  setCreating(false);
-                  setParentId(null);
-                }}
-                className="px-4 py-2 text-slate-600">
+      {creating ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
+          <Card className="w-full max-w-md space-y-3 p-6">
+            <h2 className="text-lg font-bold text-foreground">Yangi kategoriya</h2>
+            {parentId ? (
+              <p className="text-xs text-muted-foreground">Ota kategoriya tanlangan</p>
+            ) : null}
+            <Field label="Slug (URL)">
+              <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="oziq-ovqat" />
+            </Field>
+            <Field label="Nomi (lotin)">
+              <Input value={nameUzLatn} onChange={(e) => setNameUzLatn(e.target.value)} placeholder="Oziq-ovqat" />
+            </Field>
+            <Field label="Nomi (kirill)">
+              <Input value={nameUzCyrl} onChange={(e) => setNameUzCyrl(e.target.value)} placeholder="Озиқ-овқат" />
+            </Field>
+            <Field label="Nomi (русский)">
+              <Input value={nameRu} onChange={(e) => setNameRu(e.target.value)} placeholder="Продукты" />
+            </Field>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="ghost" size="sm" onClick={closeForm}>
                 Bekor
-              </button>
-              <button
+              </Button>
+              <Button
+                size="sm"
                 disabled={!slug || !nameUzLatn || !nameUzCyrl || !nameRu || create.isPending}
-                onClick={() => create.mutate()}
-                className="px-4 py-2 bg-[#0046AD] text-white rounded-md disabled:opacity-50">
+                onClick={() => create.mutate()}>
                 Saqlash
-              </button>
+              </Button>
             </div>
-          </div>
+          </Card>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -130,56 +143,46 @@ function CategoryList({
   onDelete: (id: string) => void;
 }) {
   return (
-    <ul className="space-y-1">
+    <ul className="space-y-0.5">
       {items.map((c) => (
         <li key={c.id}>
           <div
-            className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-slate-50"
-            style={{ paddingLeft: 12 + depth * 24 }}>
-            <div>
-              <span className="font-semibold">{c.nameUzLatn}</span>
-              <span className="text-xs text-slate-500 ml-2">/{c.slug}</span>
-              {!c.isActive && (
-                <span className="ml-2 text-xs bg-slate-200 px-2 py-0.5 rounded">O&apos;chirilgan</span>
-              )}
+            className="group flex items-center justify-between rounded-lg px-3 py-2.5 transition-colors hover:bg-muted"
+            style={{ paddingLeft: 12 + depth * 22 }}>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">{c.nameUzLatn}</span>
+              <span className="text-xs text-muted-foreground">/{c.slug}</span>
+              {!c.isActive ? <Badge variant="neutral">O&apos;chirilgan</Badge> : null}
             </div>
-            <div className="flex gap-2 text-sm">
-              <button onClick={() => onAddChild(c.id)} className="text-[#0046AD] hover:underline">
-                + Pastki
-              </button>
-              <button
+            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <Button variant="ghost" size="sm" onClick={() => onAddChild(c.id)}>
+                <Plus className="size-3.5" />
+                Pastki
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => {
                   if (confirm(`"${c.nameUzLatn}" ni o'chirasizmi?`)) onDelete(c.id);
-                }}
-                className="text-red-600 hover:underline">
-                O&apos;chirish
-              </button>
+                }}>
+                <Trash2 className="size-4 text-destructive" />
+              </Button>
             </div>
           </div>
-          {c.children && c.children.length > 0 && (
+          {c.children && c.children.length > 0 ? (
             <CategoryList items={c.children} depth={depth + 1} onAddChild={onAddChild} onDelete={onDelete} />
-          )}
+          ) : null}
         </li>
       ))}
     </ul>
   );
 }
 
-function Input({ label, value, onChange, placeholder }: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label className="block text-sm font-semibold mb-1">{label}</label>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-3 py-2 border border-slate-300 rounded-md"
-      />
+    <div className="space-y-1">
+      <label className="text-sm font-medium text-foreground">{label}</label>
+      {children}
     </div>
   );
 }
