@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Bell, FileText, FolderTree, LogOut, Store, Users, type LucideIcon } from 'lucide-react';
+import { Bell, FileText, FolderTree, Inbox, LogOut, Smartphone, Store, Users, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -23,6 +23,8 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/admin/shops', label: "Do'konlar", icon: Store },
   { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
   { href: '/admin/notifications', label: 'Bildirishnomalar', icon: Bell },
+  { href: '/admin/releases', label: 'Ilova versiyalari', icon: Smartphone },
+  { href: '/admin/inquiries', label: 'Murojaatlar', icon: Inbox },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

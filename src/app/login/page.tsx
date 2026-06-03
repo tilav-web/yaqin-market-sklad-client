@@ -1,11 +1,13 @@
 'use client';
 
 import { useMutation } from '@tanstack/react-query';
+import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { api, extractErrorMessage, tokenStore } from '@/lib/api';
 
 export default function LoginPage() {
@@ -80,14 +82,23 @@ export default function LoginPage() {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">Tasdiq kodi</label>
-              <Input
+              <InputOTP
+                maxLength={6}
                 value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="123456"
-                autoFocus
+                onChange={setCode}
+                pattern={REGEXP_ONLY_DIGITS}
                 inputMode="numeric"
-                className="h-12 text-center text-2xl font-bold tracking-[0.3em]"
-              />
+                autoFocus
+                containerClassName="justify-center">
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
             </div>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             <Button
