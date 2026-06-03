@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
@@ -29,6 +29,7 @@ export default function CategoriesPage() {
   const [nameUzLatn, setNameUzLatn] = useState('');
   const [nameUzCyrl, setNameUzCyrl] = useState('');
   const [nameRu, setNameRu] = useState('');
+  const [editing, setEditing] = useState<Category | null>(null);
 
   const treeQuery = useQuery({
     queryKey: ['admin', 'categories'],
@@ -63,6 +64,15 @@ export default function CategoriesPage() {
       await api.delete(`/categories/${id}`);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'categories'] }),
+    onError: (e) => alert(extractErrorMessage(e)),
+  });
+
+  const update = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: Partial<Category> }) => {
+      await api.patch(`/categories/${id}`, patch);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'categories'] }),
+    onError: (e) => alert(extractErrorMessage(e)),
   });
 
   return (
@@ -80,17 +90,28 @@ export default function CategoriesPage() {
       />
 
       <Card className="p-3">
-        {treeQuery.data && treeQuery.data.length > 0 ? (
+        {treeQuery.isError ? (
+          <p className="px-3 py-10 text-center text-sm text-destructive">
+            {extractErrorMessage(treeQuery.error)} —{' '}
+            <button className="underline" onClick={() => treeQuery.refetch()}>
+              qayta urinish
+            </button>
+          </p>
+        ) : treeQuery.data && treeQuery.data.length > 0 ? (
           <CategoryList
             items={treeQuery.data}
             onAddChild={(id) => {
               setParentId(id);
               setCreating(true);
             }}
+            onEdit={(c) => setEditing(c)}
+            onToggleActive={(c) => update.mutate({ id: c.id, patch: { isActive: !c.isActive } })}
             onDelete={(id) => remove.mutate(id)}
           />
         ) : (
-          <p className="px-3 py-10 text-center text-sm text-muted-foreground">Kategoriya yo&apos;q</p>
+          <p className="px-3 py-10 text-center text-sm text-muted-foreground">
+            {treeQuery.isLoading ? 'Yuklanmoqda…' : "Kategoriya yo'q"}
+          </p>
         )}
       </Card>
 
@@ -127,6 +148,20 @@ export default function CategoriesPage() {
           </Card>
         </div>
       ) : null}
+
+      {editing ? (
+        <EditCategoryModal
+          category={editing}
+          pending={update.isPending}
+          onClose={() => setEditing(null)}
+          onSave={(patch) =>
+            update.mutate(
+              { id: editing.id, patch },
+              { onSuccess: () => setEditing(null) },
+            )
+          }
+        />
+      ) : null}
     </div>
   );
 }
@@ -135,11 +170,15 @@ function CategoryList({
   items,
   depth = 0,
   onAddChild,
+  onEdit,
+  onToggleActive,
   onDelete,
 }: {
   items: Category[];
   depth?: number;
   onAddChild: (id: string) => void;
+  onEdit: (c: Category) => void;
+  onToggleActive: (c: Category) => void;
   onDelete: (id: string) => void;
 }) {
   return (
@@ -155,9 +194,15 @@ function CategoryList({
               {!c.isActive ? <Badge variant="neutral">O&apos;chirilgan</Badge> : null}
             </div>
             <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <Button variant="ghost" size="sm" onClick={() => onToggleActive(c)}>
+                {c.isActive ? "Yashirish" : "Ko'rsatish"}
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => onAddChild(c.id)}>
                 <Plus className="size-3.5" />
                 Pastki
+              </Button>
+              <Button variant="ghost" size="icon-sm" onClick={() => onEdit(c)}>
+                <Pencil className="size-4" />
               </Button>
               <Button
                 variant="ghost"
@@ -170,11 +215,82 @@ function CategoryList({
             </div>
           </div>
           {c.children && c.children.length > 0 ? (
-            <CategoryList items={c.children} depth={depth + 1} onAddChild={onAddChild} onDelete={onDelete} />
+            <CategoryList
+              items={c.children}
+              depth={depth + 1}
+              onAddChild={onAddChild}
+              onEdit={onEdit}
+              onToggleActive={onToggleActive}
+              onDelete={onDelete}
+            />
           ) : null}
         </li>
       ))}
     </ul>
+  );
+}
+
+function EditCategoryModal({
+  category,
+  pending,
+  onClose,
+  onSave,
+}: {
+  category: Category;
+  pending: boolean;
+  onClose: () => void;
+  onSave: (patch: Partial<Category>) => void;
+}) {
+  const [slug, setSlug] = useState(category.slug);
+  const [nameUzLatn, setNameUzLatn] = useState(category.nameUzLatn);
+  const [nameUzCyrl, setNameUzCyrl] = useState(category.nameUzCyrl);
+  const [nameRu, setNameRu] = useState(category.nameRu);
+  const [sortOrder, setSortOrder] = useState(String(category.sortOrder));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
+      <Card className="w-full max-w-md space-y-3 p-6">
+        <h2 className="text-lg font-bold text-foreground">Kategoriyani tahrirlash</h2>
+        <Field label="Slug (URL)">
+          <Input value={slug} onChange={(e) => setSlug(e.target.value)} />
+        </Field>
+        <Field label="Nomi (lotin)">
+          <Input value={nameUzLatn} onChange={(e) => setNameUzLatn(e.target.value)} />
+        </Field>
+        <Field label="Nomi (kirill)">
+          <Input value={nameUzCyrl} onChange={(e) => setNameUzCyrl(e.target.value)} />
+        </Field>
+        <Field label="Nomi (русский)">
+          <Input value={nameRu} onChange={(e) => setNameRu(e.target.value)} />
+        </Field>
+        <Field label="Tartib raqami">
+          <Input
+            type="number"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+          />
+        </Field>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Bekor
+          </Button>
+          <Button
+            size="sm"
+            disabled={!slug || !nameUzLatn || !nameUzCyrl || !nameRu || pending}
+            onClick={() =>
+              onSave({
+                slug,
+                nameUzLatn,
+                nameUzCyrl,
+                nameRu,
+                sortOrder: Number(sortOrder) || 0,
+              })
+            }>
+            Saqlash
+          </Button>
+        </div>
+      </Card>
+    </div>
   );
 }
 

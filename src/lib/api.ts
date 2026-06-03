@@ -35,6 +35,48 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Single-flight refresh: on a 401 we try to mint a new token pair once, then
+// replay the original request. Concurrent 401s share the same refresh promise.
+let refreshPromise: Promise<string> | null = null;
+
+async function runRefresh(): Promise<string> {
+  const rt = tokenStore.refresh;
+  if (!rt) throw new Error('No refresh token');
+  const res = await axios.post<{ accessToken: string; refreshToken: string }>(
+    `${API_URL}/api/auth/refresh`,
+    { refreshToken: rt },
+    { timeout: 15000 },
+  );
+  tokenStore.save(res.data.accessToken, res.data.refreshToken);
+  return res.data.accessToken;
+}
+
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const original = error.config;
+    const status = error.response?.status;
+    // Don't try to refresh the refresh call itself, and only retry once.
+    const isAuthCall = typeof original?.url === 'string' && original.url.includes('/auth/');
+    if (status === 401 && original && !original._retry && !isAuthCall && tokenStore.refresh) {
+      original._retry = true;
+      try {
+        refreshPromise = refreshPromise ?? runRefresh();
+        const newAccess = await refreshPromise;
+        refreshPromise = null;
+        original.headers.set('Authorization', `Bearer ${newAccess}`);
+        return api(original);
+      } catch (e) {
+        refreshPromise = null;
+        tokenStore.clear();
+        if (globalThis.window !== undefined) globalThis.window.location.href = '/login';
+        throw e;
+      }
+    }
+    throw error;
+  },
+);
+
 export function extractErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
     const body = err.response?.data as { message?: string | string[] } | undefined;

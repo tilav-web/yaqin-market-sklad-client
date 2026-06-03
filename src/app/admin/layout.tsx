@@ -40,10 +40,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       return res.data;
     },
     enabled: !!tokenStore.access,
+    retry: false,
   });
 
   useEffect(() => {
     if (!tokenStore.access) {
+      router.replace('/login');
+      return;
+    }
+    // Session invalid (401 survived the refresh interceptor) → bounce to login.
+    if (meQuery.isError) {
+      tokenStore.clear();
       router.replace('/login');
       return;
     }
@@ -52,9 +59,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       tokenStore.clear();
       router.replace('/login');
     }
-  }, [meQuery.data, router]);
+  }, [meQuery.data, meQuery.isError, router]);
 
   if (!mounted || !tokenStore.access) return null;
+  // Don't flash the panel before we've confirmed the user is an admin.
+  if (meQuery.isLoading || !meQuery.data?.isAdmin) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+        Yuklanmoqda…
+      </div>
+    );
+  }
 
   const active = NAV_ITEMS.find((i) => pathname.startsWith(i.href));
   const logout = () => {
