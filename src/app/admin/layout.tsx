@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Bell, CreditCard, FileText, FolderTree, Inbox, LogOut, Settings, Smartphone, Star, Store, Users, Wallet, type LucideIcon } from 'lucide-react';
+import { BarChart3, Bell, CreditCard, FileText, FolderTree, Inbox, LogOut, Settings, Smartphone, Star, Store, Users, Wallet, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -18,6 +18,7 @@ interface MeUser {
 }
 
 const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: '/admin/dashboard', label: 'Dashboard', icon: BarChart3 },
   { href: '/admin/applications', label: 'Seller arizalari', icon: FileText },
   { href: '/admin/categories', label: 'Kategoriyalar', icon: FolderTree },
   { href: '/admin/shops', label: "Do'konlar", icon: Store },
