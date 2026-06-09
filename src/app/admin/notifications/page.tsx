@@ -22,6 +22,7 @@ interface Template {
   title: string;
   body: string;
   richBody?: string;
+  imageUrl?: string;
 }
 
 type Audience = 'all' | 'sellers' | 'customers' | 'specific';
@@ -63,6 +64,8 @@ export default function NotificationsPage() {
   const [tplName, setTplName] = useState('');
   const [tplTitle, setTplTitle] = useState('');
   const [tplRichBody, setTplRichBody] = useState('');
+  const [tplImageUrl, setTplImageUrl] = useState('');
+  const [tplImageUploading, setTplImageUploading] = useState(false);
   const [showTplForm, setShowTplForm] = useState(false);
 
   const templatesQuery = useQuery({
@@ -108,6 +111,7 @@ export default function NotificationsPage() {
         title: tplTitle.trim(),
         body: plainBody,
         richBody: tplRichBody || undefined,
+        imageUrl: tplImageUrl || undefined,
       });
     },
     onSuccess: () => {
@@ -115,6 +119,8 @@ export default function NotificationsPage() {
       setTplName('');
       setTplTitle('');
       setTplRichBody('');
+      setTplImageUrl('');
+      setTplImageUploading(false);
       setShowTplForm(false);
     },
   });
@@ -129,6 +135,22 @@ export default function NotificationsPage() {
   const useTemplate = (t: Template) => {
     setTitle(t.title);
     setRichBody(t.richBody ?? t.body);
+    setImageUrl(t.imageUrl ?? '');
+  };
+
+  const uploadTplImage = async (file: File) => {
+    setTplImageUploading(true);
+    setTplImageUrl('');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await api.post<{ url: string }>('/uploads/image', form);
+      setTplImageUrl(res.data.url);
+    } catch (e) {
+      setResult(`Rasm yuklanmadi: ${extractErrorMessage(e)}`);
+    } finally {
+      setTplImageUploading(false);
+    }
   };
 
   const uploadImage = async (file: File) => {
@@ -254,9 +276,27 @@ export default function NotificationsPage() {
             <Input value={tplName} onChange={(e) => setTplName(e.target.value)} placeholder="Shablon nomi" />
             <Input value={tplTitle} onChange={(e) => setTplTitle(e.target.value)} placeholder="Sarlavha" />
             <RichTextEditor value={tplRichBody} onChange={setTplRichBody} />
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Rasm (ixtiyoriy)</label>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadTplImage(f); }}
+                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm file:mr-3 file:rounded file:border-0 file:bg-primary file:px-3 file:py-1 file:text-xs file:font-medium file:text-primary-foreground"
+              />
+              {tplImageUploading && <p className="mt-1 text-xs text-muted-foreground">Yuklanmoqda…</p>}
+              {tplImageUrl && !tplImageUploading && (
+                <div className="mt-2 flex items-center gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`${process.env.NEXT_PUBLIC_API_URL}${tplImageUrl}`} alt="preview" className="h-10 w-10 rounded object-cover border border-border" />
+                  <p className="text-xs text-green-600 font-medium">Yuklandi ✓</p>
+                  <button type="button" onClick={() => setTplImageUrl('')} className="ml-auto text-xs text-destructive">O'chirish</button>
+                </div>
+              )}
+            </div>
             <Button
               size="sm"
-              disabled={!tplName.trim() || !tplTitle.trim() || !tplRichBody || createTpl.isPending}
+              disabled={!tplName.trim() || !tplTitle.trim() || !tplRichBody || tplImageUploading || createTpl.isPending}
               onClick={() => createTpl.mutate()}>
               Saqlash
             </Button>
