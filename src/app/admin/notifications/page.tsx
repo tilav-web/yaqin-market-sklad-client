@@ -18,6 +18,17 @@ interface Template {
 
 type Audience = 'all' | 'sellers' | 'customers' | 'specific';
 
+const DEEP_LINKS: { value: string; label: string }[] = [
+  { value: '/notifications', label: 'Bildirishnomalar sahifasi (standart)' },
+  { value: '/', label: 'Bosh sahifa' },
+  { value: '/orders', label: 'Buyurtmalar' },
+  { value: '/(tabs)/map', label: 'Xarita' },
+  { value: '/(tabs)/search', label: 'Qidiruv' },
+  { value: '/(tabs)/carts', label: 'Savat' },
+  { value: '/shops', label: 'Barcha do\'konlar' },
+  { value: '/seller-application', label: 'Sotuvchi bo\'lish arizasi' },
+];
+
 const AUDIENCES: { key: Audience; label: string }[] = [
   { key: 'all', label: 'Hammaga (ro‘yxatdan o‘tmaganlar ham)' },
   { key: 'sellers', label: 'Sotuvchilar' },
@@ -32,7 +43,7 @@ export default function NotificationsPage() {
   const [body, setBody] = useState('');
   const [phones, setPhones] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [deepLink, setDeepLink] = useState('');
+  const [deepLink, setDeepLink] = useState('/notifications');
   const [result, setResult] = useState<string | null>(null);
 
   // Template form
@@ -58,7 +69,7 @@ export default function NotificationsPage() {
         audience,
         ...(audience === 'specific' ? { phones: phoneList } : {}),
         ...(imageUrl.trim() ? { imageUrl: imageUrl.trim() } : {}),
-        ...(deepLink.trim() ? { deepLink: deepLink.trim() } : {}),
+        ...(deepLink && deepLink !== '/notifications' ? { deepLink } : {}),
       });
       return res.data;
     },
@@ -68,7 +79,7 @@ export default function NotificationsPage() {
       setBody('');
       setPhones('');
       setImageUrl('');
-      setDeepLink('');
+      setDeepLink('/notifications');
     },
     onError: (e) => setResult(`Xatolik: ${extractErrorMessage(e)}`),
   });
@@ -162,14 +173,15 @@ export default function NotificationsPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Havola (deeplink, ixtiyoriy)</label>
-          <Input
+          <label className="mb-1 block text-sm font-medium">Bildirishnomaga bosganda qaysi sahifa ochilsin</label>
+          <select
             value={deepLink}
             onChange={(e) => setDeepLink(e.target.value)}
-            placeholder="/orders yoki /notifications"
-            maxLength={256}
-          />
-          <p className="mt-1 text-xs text-muted-foreground">Bildirishnomaga bosganda qaysi sahifa ochilsin. Standart: /notifications</p>
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
+            {DEEP_LINKS.map((d) => (
+              <option key={d.value} value={d.value}>{d.label}</option>
+            ))}
+          </select>
         </div>
 
         {result && <p className="text-sm font-medium text-primary">{result}</p>}
