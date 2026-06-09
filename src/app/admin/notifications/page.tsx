@@ -31,6 +31,8 @@ export default function NotificationsPage() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [phones, setPhones] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [deepLink, setDeepLink] = useState('');
   const [result, setResult] = useState<string | null>(null);
 
   // Template form
@@ -55,6 +57,8 @@ export default function NotificationsPage() {
         body: body.trim(),
         audience,
         ...(audience === 'specific' ? { phones: phoneList } : {}),
+        ...(imageUrl.trim() ? { imageUrl: imageUrl.trim() } : {}),
+        ...(deepLink.trim() ? { deepLink: deepLink.trim() } : {}),
       });
       return res.data;
     },
@@ -63,6 +67,8 @@ export default function NotificationsPage() {
       setTitle('');
       setBody('');
       setPhones('');
+      setImageUrl('');
+      setDeepLink('');
     },
     onError: (e) => setResult(`Xatolik: ${extractErrorMessage(e)}`),
   });
@@ -141,6 +147,29 @@ export default function NotificationsPage() {
             placeholder="Bildirishnoma matni"
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
           />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium">Rasm URL (ixtiyoriy)</label>
+          <Input
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+            placeholder="https://example.com/banner.jpg"
+            type="url"
+            maxLength={512}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">Bildirishnomada ko'rinadigan rasm (reklamalar uchun)</p>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium">Havola (deeplink, ixtiyoriy)</label>
+          <Input
+            value={deepLink}
+            onChange={(e) => setDeepLink(e.target.value)}
+            placeholder="/orders yoki /notifications"
+            maxLength={256}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">Bildirishnomaga bosganda qaysi sahifa ochilsin. Standart: /notifications</p>
         </div>
 
         {result && <p className="text-sm font-medium text-primary">{result}</p>}
