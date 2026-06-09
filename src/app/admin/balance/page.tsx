@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
 
@@ -31,6 +31,7 @@ const fmt = (v: string) => Number(v).toLocaleString('uz-UZ') + " so'm";
 export default function AdminBalancePage() {
   const [sellerId, setSellerId] = useState('');
   const [search, setSearch] = useState('');
+  const qc = useQueryClient();
 
   const balQ = useQuery<SellerBalance>({
     queryKey: ['admin', 'balance', sellerId],
@@ -45,6 +46,22 @@ export default function AdminBalancePage() {
   });
 
   const b = balQ.data;
+
+  const forceSettle = useMutation({
+    mutationFn: (txId: string) => api.post(`/admin/balance/transactions/${txId}/force-settle`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'balance', sellerId] });
+      qc.invalidateQueries({ queryKey: ['admin', 'txs', sellerId] });
+    },
+  });
+
+  const forceRefund = useMutation({
+    mutationFn: (txId: string) => api.post(`/admin/balance/transactions/${txId}/force-refund`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'balance', sellerId] });
+      qc.invalidateQueries({ queryKey: ['admin', 'txs', sellerId] });
+    },
+  });
 
   return (
     <div className="p-6">
@@ -104,6 +121,24 @@ export default function AdminBalancePage() {
                 <span className="text-xs text-muted-foreground">
                   {new Date(tx.createdAt).toLocaleDateString('uz-UZ')}
                 </span>
+                {tx.status === 'pending' && tx.type === 'online_order_pending' && (
+                  <div className="flex gap-1">
+                    <button
+                      className="text-xs rounded px-2 py-1 bg-green-100 text-green-800 hover:bg-green-200"
+                      onClick={() => forceSettle.mutate(tx.id)}
+                      disabled={forceSettle.isPending}
+                    >
+                      Settle
+                    </button>
+                    <button
+                      className="text-xs rounded px-2 py-1 bg-red-100 text-red-800 hover:bg-red-200"
+                      onClick={() => forceRefund.mutate(tx.id)}
+                      disabled={forceRefund.isPending}
+                    >
+                      Refund
+                    </button>
+                  </div>
+                )}
               </Card>
             ))}
           </div>
