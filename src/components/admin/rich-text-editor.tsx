@@ -52,14 +52,13 @@ export function RichTextEditor({ value, onChange }: Props) {
     }
   }, [editor]);
 
-  if (!editor) return null;
-
   const btn = (active: boolean, onClick: () => void, title: string, Icon: React.ElementType) => (
     <button
       type="button"
       title={title}
       onClick={onClick}
-      className={`rounded p-1.5 transition-colors ${active ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>
+      disabled={!editor}
+      className={`rounded p-1.5 transition-colors disabled:opacity-40 ${active ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}>
       <Icon className="size-4" />
     </button>
   );
@@ -68,32 +67,32 @@ export function RichTextEditor({ value, onChange }: Props) {
     <div className="overflow-hidden rounded-lg border border-border bg-background">
       {/* Toolbar */}
       <div className="flex flex-wrap gap-0.5 border-b border-border bg-muted/30 px-2 py-1.5">
-        {btn(editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'Qalin', Bold)}
-        {btn(editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), 'Kursiv', Italic)}
-        {btn(editor.isActive('strike'), () => editor.chain().focus().toggleStrike().run(), 'Chizilgan', Strikethrough)}
+        {btn(editor?.isActive('bold') ?? false, () => editor?.chain().focus().toggleBold().run(), 'Qalin', Bold)}
+        {btn(editor?.isActive('italic') ?? false, () => editor?.chain().focus().toggleItalic().run(), 'Kursiv', Italic)}
+        {btn(editor?.isActive('strike') ?? false, () => editor?.chain().focus().toggleStrike().run(), 'Chizilgan', Strikethrough)}
         <div className="mx-1 w-px self-stretch bg-border" />
         {btn(
-          editor.isActive('heading', { level: 1 }),
-          () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
+          editor?.isActive('heading', { level: 1 }) ?? false,
+          () => editor?.chain().focus().toggleHeading({ level: 1 }).run(),
           'H1',
           Heading1,
         )}
         {btn(
-          editor.isActive('heading', { level: 2 }),
-          () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+          editor?.isActive('heading', { level: 2 }) ?? false,
+          () => editor?.chain().focus().toggleHeading({ level: 2 }).run(),
           'H2',
           Heading2,
         )}
         <div className="mx-1 w-px self-stretch bg-border" />
-        {btn(editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), 'Ro\'yxat', List)}
+        {btn(editor?.isActive('bulletList') ?? false, () => editor?.chain().focus().toggleBulletList().run(), "Ro'yxat", List)}
         {btn(
-          editor.isActive('orderedList'),
-          () => editor.chain().focus().toggleOrderedList().run(),
-          'Raqamli ro\'yxat',
+          editor?.isActive('orderedList') ?? false,
+          () => editor?.chain().focus().toggleOrderedList().run(),
+          "Raqamli ro'yxat",
           ListOrdered,
         )}
         <div className="mx-1 w-px self-stretch bg-border" />
-        {btn(editor.isActive('link'), addLink, 'Havola', LinkIcon)}
+        {btn(editor?.isActive('link') ?? false, addLink, 'Havola', LinkIcon)}
         {btn(false, addImage, 'Rasm', ImageIcon)}
       </div>
 

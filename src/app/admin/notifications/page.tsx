@@ -4,8 +4,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Send, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
-import { RichTextEditor } from '@/components/admin/rich-text-editor';
+import dynamic from 'next/dynamic';
+
 import { PageHeader } from '@/components/admin/page-header';
+
+const RichTextEditor = dynamic(
+  () => import('@/components/admin/rich-text-editor').then((m) => ({ default: m.RichTextEditor })),
+  { ssr: false, loading: () => <div className="min-h-[180px] animate-pulse rounded-lg border border-border bg-muted/30" /> },
+);
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
