@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, MapPin, Store, User, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, MapPin, Save, Store, User, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { PageHeader, StatPill } from '@/components/admin/page-header';
@@ -9,6 +9,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+
+interface SellerProfile {
+  fullName: string | null;
+  passportOrPinfl: string | null;
+  stir: string | null;
+  bankCardNumber: string | null;
+  bankCardHolderName: string | null;
+  adminNotes: string | null;
+  verifiedAt: string | null;
+}
 
 interface SellerApplication {
   id: string;
@@ -39,11 +49,83 @@ const STATUS: Record<SellerApplication['status'], { label: string; variant: 'war
   rejected: { label: 'Rad etildi', variant: 'danger' },
 };
 
+function SellerProfilePanel({ userId }: { userId: string }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState<Partial<SellerProfile>>({});
+  const [err, setErr] = useState('');
+
+  const profileQ = useQuery<SellerProfile | null>({
+    queryKey: ['admin', 'profile', userId],
+    queryFn: async () => {
+      try { return (await api.get(`/sellers/admin/profiles/${userId}`)).data; } catch { return null; }
+    },
+  });
+
+  const save = useMutation({
+    mutationFn: (verify?: boolean) =>
+      api.put(`/sellers/admin/profiles/${userId}`, { ...form, verify }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'profile', userId] });
+      setForm({});
+      setErr('');
+    },
+    onError: (e: unknown) => setErr(extractErrorMessage(e)),
+  });
+
+  const p = profileQ.data;
+  const val = (k: keyof SellerProfile) => (form[k] !== undefined ? form[k] : p?.[k]) ?? '';
+
+  return (
+    <div className="mt-4 space-y-2 border-t border-border pt-4">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Seller Profili</p>
+      {profileQ.isLoading ? (
+        <p className="text-xs text-muted-foreground">Yuklanmoqda…</p>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {[
+            { k: 'fullName', label: 'To\'liq ism' },
+            { k: 'passportOrPinfl', label: 'Pasport / PINFL' },
+            { k: 'stir', label: 'STIR' },
+            { k: 'bankCardNumber', label: 'Karta raqami (16 raqam)' },
+            { k: 'bankCardHolderName', label: 'Karta egasi' },
+            { k: 'adminNotes', label: 'Admin izohi' },
+          ].map(({ k, label }) => (
+            <div key={k}>
+              <label className="mb-0.5 block text-xs text-muted-foreground">{label}</label>
+              <input
+                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+                value={val(k as keyof SellerProfile) as string}
+                onChange={(e) => setForm((prev) => ({ ...prev, [k]: e.target.value }))}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      {p?.verifiedAt && (
+        <p className="text-xs text-green-600">✓ Tasdiqlangan: {new Date(p.verifiedAt).toLocaleDateString('uz-UZ')}</p>
+      )}
+      {err && <p className="text-xs text-destructive">{err}</p>}
+      <div className="flex gap-2">
+        <Button size="sm" disabled={save.isPending} onClick={() => save.mutate(false)}>
+          <Save className="size-3" />
+          Saqlash
+        </Button>
+        {!p?.verifiedAt && (
+          <Button size="sm" variant="success" disabled={save.isPending} onClick={() => save.mutate(true)}>
+            Saqlash & Tasdiqlash
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ApplicationsPage() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<Filter>('pending');
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [openProfileId, setOpenProfileId] = useState<string | null>(null);
 
   const appsQuery = useQuery({
     queryKey: ['admin', 'applications'],
@@ -179,6 +261,22 @@ export default function ApplicationsPage() {
                           <X className="size-4" />
                           Rad etish
                         </Button>
+                      </div>
+                    ) : null}
+
+                    {app.status === 'approved' ? (
+                      <div className="mt-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setOpenProfileId(openProfileId === app.user.id ? null : app.user.id)}
+                        >
+                          {openProfileId === app.user.id ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                          Seller profili
+                        </Button>
+                        {openProfileId === app.user.id && (
+                          <SellerProfilePanel userId={app.user.id} />
+                        )}
                       </div>
                     ) : null}
                   </div>
