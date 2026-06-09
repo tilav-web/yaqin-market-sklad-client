@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Send, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
+import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import { PageHeader } from '@/components/admin/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
@@ -14,6 +15,7 @@ interface Template {
   name: string;
   title: string;
   body: string;
+  richBody?: string;
 }
 
 type Audience = 'all' | 'sellers' | 'customers' | 'specific';
@@ -30,17 +32,21 @@ const DEEP_LINKS: { value: string; label: string }[] = [
 ];
 
 const AUDIENCES: { key: Audience; label: string }[] = [
-  { key: 'all', label: 'Hammaga (ro‘yxatdan o‘tmaganlar ham)' },
+  { key: 'all', label: "Hammaga (ro'yxatdan o'tmaganlar ham)" },
   { key: 'sellers', label: 'Sotuvchilar' },
   { key: 'customers', label: 'Mijozlar' },
   { key: 'specific', label: 'Tanlangan (telefon raqamlar)' },
 ];
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 export default function NotificationsPage() {
   const qc = useQueryClient();
   const [audience, setAudience] = useState<Audience>('all');
   const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
+  const [richBody, setRichBody] = useState('');
   const [phones, setPhones] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [deepLink, setDeepLink] = useState('/notifications');
@@ -49,7 +55,7 @@ export default function NotificationsPage() {
   // Template form
   const [tplName, setTplName] = useState('');
   const [tplTitle, setTplTitle] = useState('');
-  const [tplBody, setTplBody] = useState('');
+  const [tplRichBody, setTplRichBody] = useState('');
   const [showTplForm, setShowTplForm] = useState(false);
 
   const templatesQuery = useQuery({
@@ -63,9 +69,11 @@ export default function NotificationsPage() {
         .split(/[\n,]/)
         .map((p) => p.trim())
         .filter(Boolean);
+      const plainBody = stripHtml(richBody).slice(0, 512) || title;
       const res = await api.post<{ registered: number; pushedTokens: number }>('/admin/notifications/send', {
         title: title.trim(),
-        body: body.trim(),
+        body: plainBody,
+        richBody: richBody || undefined,
         audience,
         ...(audience === 'specific' ? { phones: phoneList } : {}),
         ...(imageUrl.trim() ? { imageUrl: imageUrl.trim() } : {}),
@@ -76,7 +84,7 @@ export default function NotificationsPage() {
     onSuccess: (r) => {
       setResult(`Yuborildi — ${r.registered} foydalanuvchi, ${r.pushedTokens} qurilma`);
       setTitle('');
-      setBody('');
+      setRichBody('');
       setPhones('');
       setImageUrl('');
       setDeepLink('/notifications');
@@ -86,13 +94,19 @@ export default function NotificationsPage() {
 
   const createTpl = useMutation({
     mutationFn: async () => {
-      await api.post('/admin/notifications/templates', { name: tplName.trim(), title: tplTitle.trim(), body: tplBody.trim() });
+      const plainBody = stripHtml(tplRichBody).slice(0, 512) || tplTitle;
+      await api.post('/admin/notifications/templates', {
+        name: tplName.trim(),
+        title: tplTitle.trim(),
+        body: plainBody,
+        richBody: tplRichBody || undefined,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'templates'] });
       setTplName('');
       setTplTitle('');
-      setTplBody('');
+      setTplRichBody('');
       setShowTplForm(false);
     },
   });
@@ -106,10 +120,11 @@ export default function NotificationsPage() {
 
   const useTemplate = (t: Template) => {
     setTitle(t.title);
-    setBody(t.body);
+    setRichBody(t.richBody ?? t.body);
   };
 
-  const canSend = title.trim() && body.trim() && (audience !== 'specific' || phones.trim());
+  const plainPreview = stripHtml(richBody).slice(0, 100);
+  const canSend = title.trim() && richBody && (audience !== 'specific' || phones.trim());
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
@@ -148,16 +163,15 @@ export default function NotificationsPage() {
           <label className="mb-1 block text-sm font-medium">Sarlavha</label>
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Masalan: Aksiya boshlandi!" maxLength={128} />
         </div>
+
         <div>
           <label className="mb-1 block text-sm font-medium">Matn</label>
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            rows={3}
-            maxLength={512}
-            placeholder="Bildirishnoma matni"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-          />
+          <RichTextEditor value={richBody} onChange={setRichBody} />
+          {plainPreview && (
+            <p className="mt-1.5 truncate text-xs text-muted-foreground">
+              <span className="font-medium">Push preview:</span> {plainPreview}
+            </p>
+          )}
         </div>
 
         <div>
@@ -206,14 +220,11 @@ export default function NotificationsPage() {
           <div className="space-y-2 rounded-lg border border-border p-3">
             <Input value={tplName} onChange={(e) => setTplName(e.target.value)} placeholder="Shablon nomi" />
             <Input value={tplTitle} onChange={(e) => setTplTitle(e.target.value)} placeholder="Sarlavha" />
-            <textarea
-              value={tplBody}
-              onChange={(e) => setTplBody(e.target.value)}
-              rows={2}
-              placeholder="Matn"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            />
-            <Button size="sm" disabled={!tplName.trim() || !tplTitle.trim() || !tplBody.trim() || createTpl.isPending} onClick={() => createTpl.mutate()}>
+            <RichTextEditor value={tplRichBody} onChange={setTplRichBody} />
+            <Button
+              size="sm"
+              disabled={!tplName.trim() || !tplTitle.trim() || !tplRichBody || createTpl.isPending}
+              onClick={() => createTpl.mutate()}>
               Saqlash
             </Button>
           </div>
@@ -224,7 +235,7 @@ export default function NotificationsPage() {
             <div key={t.id} className="flex items-start justify-between gap-3 rounded-lg border border-border px-3 py-2">
               <button className="min-w-0 flex-1 text-left" onClick={() => useTemplate(t)}>
                 <p className="text-sm font-medium">{t.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{t.title} — {t.body}</p>
+                <p className="truncate text-xs text-muted-foreground">{t.title} — {stripHtml(t.richBody ?? t.body)}</p>
               </button>
               <button className="text-destructive" onClick={() => deleteTpl.mutate(t.id)}>
                 <Trash2 className="size-4" />
@@ -232,7 +243,7 @@ export default function NotificationsPage() {
             </div>
           ))}
           {(templatesQuery.data ?? []).length === 0 && (
-            <p className="text-sm text-muted-foreground">Shablon yo‘q. Tez-tez yuboriladigan xabarlar uchun shablon qo‘shing.</p>
+            <p className="text-sm text-muted-foreground">Shablon yo'q. Tez-tez yuboriladigan xabarlar uchun shablon qo'shing.</p>
           )}
         </div>
       </Card>
