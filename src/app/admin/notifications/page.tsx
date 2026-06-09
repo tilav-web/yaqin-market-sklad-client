@@ -55,6 +55,7 @@ export default function NotificationsPage() {
   const [richBody, setRichBody] = useState('');
   const [phones, setPhones] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageUploading, setImageUploading] = useState(false);
   const [deepLink, setDeepLink] = useState('/notifications');
   const [result, setResult] = useState<string | null>(null);
 
@@ -93,6 +94,7 @@ export default function NotificationsPage() {
       setRichBody('');
       setPhones('');
       setImageUrl('');
+      setImageUploading(false);
       setDeepLink('/notifications');
     },
     onError: (e) => setResult(`Xatolik: ${extractErrorMessage(e)}`),
@@ -129,8 +131,23 @@ export default function NotificationsPage() {
     setRichBody(t.richBody ?? t.body);
   };
 
+  const uploadImage = async (file: File) => {
+    setImageUploading(true);
+    setImageUrl('');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await api.post<{ url: string }>('/uploads/image', form);
+      setImageUrl(res.data.url);
+    } catch (e) {
+      setResult(`Rasm yuklanmadi: ${extractErrorMessage(e)}`);
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
   const plainPreview = stripHtml(richBody).slice(0, 100);
-  const canSend = title.trim() && richBody && (audience !== 'specific' || phones.trim());
+  const canSend = title.trim() && richBody && (audience !== 'specific' || phones.trim()) && !imageUploading;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
@@ -181,15 +198,25 @@ export default function NotificationsPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium">Rasm URL (ixtiyoriy)</label>
-          <Input
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            placeholder="https://example.com/banner.jpg"
-            type="url"
-            maxLength={512}
+          <label className="mb-1 block text-sm font-medium">Rasm (ixtiyoriy)</label>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadImage(f); }}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-primary file:px-3 file:py-1 file:text-xs file:font-medium file:text-primary-foreground"
           />
-          <p className="mt-1 text-xs text-muted-foreground">Bildirishnomada ko'rinadigan rasm (reklamalar uchun)</p>
+          {imageUploading && <p className="mt-1 text-xs text-muted-foreground">Yuklanmoqda…</p>}
+          {imageUrl && !imageUploading && (
+            <div className="mt-2 flex items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`${process.env.NEXT_PUBLIC_API_URL}${imageUrl}`} alt="preview" className="h-14 w-14 rounded object-cover border border-border" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-green-600 font-medium">Yuklandi ✓</p>
+                <p className="truncate text-xs text-muted-foreground">{imageUrl}</p>
+              </div>
+              <button type="button" onClick={() => setImageUrl('')} className="text-xs text-destructive">O'chirish</button>
+            </div>
+          )}
         </div>
 
         <div>
