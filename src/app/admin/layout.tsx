@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, Bell, CreditCard, FileText, FolderTree, Inbox, LogOut, Settings, Smartphone, Star, Store, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, BarChart3, Bell, CreditCard, FileText, FolderTree, Inbox, LogOut, Settings, Smartphone, Star, Store, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -28,6 +28,7 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/admin/inquiries', label: 'Murojaatlar', icon: Inbox },
   { href: '/admin/balance', label: 'Balanslar', icon: Wallet },
   { href: '/admin/withdrawals', label: 'Yechish so\'rovlar', icon: CreditCard },
+  { href: '/admin/debts', label: 'Qarzlar', icon: AlertTriangle },
   { href: '/admin/prime', label: 'Prime obuna', icon: Star },
   { href: '/admin/analytics', label: 'Analytics', icon: TrendingUp },
   { href: '/admin/settings', label: 'Sozlamalar', icon: Settings },
