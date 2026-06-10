@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronDown, ChevronUp, MapPin, Save, Store, User, X } from 'lucide-react';
+import { Check, Store, User, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { PageHeader, StatPill } from '@/components/admin/page-header';
@@ -10,29 +10,41 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
 
-interface SellerProfile {
-  fullName: string | null;
-  passportOrPinfl: string | null;
-  stir: string | null;
-  bankCardNumber: string | null;
-  bankCardHolderName: string | null;
-  adminNotes: string | null;
-  verifiedAt: string | null;
-}
-
 interface SellerApplication {
   id: string;
-  shopName: string;
-  shopAddress: string;
-  shopLatitude: number;
-  shopLongitude: number;
-  shopPhotos: string[];
-  stir: string | null;
+  firstName: string;
+  lastName: string;
+  contactPhone: string | null;
+  note: string | null;
   status: 'pending' | 'approved' | 'rejected';
   rejectionReason: string | null;
   createdAt: string;
   user: { id: string; phone: string; name: string | null };
 }
+
+interface ApproveForm {
+  fullName: string;
+  passportOrPinfl: string;
+  stir: string;
+  entityType: string;
+  bankCardNumber: string;
+  bankCardHolderName: string;
+  contractNumber: string;
+  contractDate: string;
+  adminNotes: string;
+}
+
+const EMPTY_APPROVE: ApproveForm = {
+  fullName: '',
+  passportOrPinfl: '',
+  stir: '',
+  entityType: '',
+  bankCardNumber: '',
+  bankCardHolderName: '',
+  contractNumber: '',
+  contractDate: '',
+  adminNotes: '',
+};
 
 type Filter = 'pending' | 'approved' | 'rejected' | 'all';
 
@@ -49,83 +61,26 @@ const STATUS: Record<SellerApplication['status'], { label: string; variant: 'war
   rejected: { label: 'Rad etildi', variant: 'danger' },
 };
 
-function SellerProfilePanel({ userId }: { userId: string }) {
-  const qc = useQueryClient();
-  const [form, setForm] = useState<Partial<SellerProfile>>({});
-  const [err, setErr] = useState('');
-
-  const profileQ = useQuery<SellerProfile | null>({
-    queryKey: ['admin', 'profile', userId],
-    queryFn: async () => {
-      try { return (await api.get(`/sellers/admin/profiles/${userId}`)).data; } catch { return null; }
-    },
-  });
-
-  const save = useMutation({
-    mutationFn: (verify?: boolean) =>
-      api.put(`/sellers/admin/profiles/${userId}`, { ...form, verify }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'profile', userId] });
-      setForm({});
-      setErr('');
-    },
-    onError: (e: unknown) => setErr(extractErrorMessage(e)),
-  });
-
-  const p = profileQ.data;
-  const val = (k: keyof SellerProfile) => (form[k] !== undefined ? form[k] : p?.[k]) ?? '';
-
-  return (
-    <div className="mt-4 space-y-2 border-t border-border pt-4">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Seller Profili</p>
-      {profileQ.isLoading ? (
-        <p className="text-xs text-muted-foreground">Yuklanmoqda…</p>
-      ) : (
-        <div className="grid gap-2 sm:grid-cols-2">
-          {[
-            { k: 'fullName', label: 'To\'liq ism' },
-            { k: 'passportOrPinfl', label: 'Pasport / PINFL' },
-            { k: 'stir', label: 'STIR' },
-            { k: 'bankCardNumber', label: 'Karta raqami (16 raqam)' },
-            { k: 'bankCardHolderName', label: 'Karta egasi' },
-            { k: 'adminNotes', label: 'Admin izohi' },
-          ].map(({ k, label }) => (
-            <div key={k}>
-              <label className="mb-0.5 block text-xs text-muted-foreground">{label}</label>
-              <input
-                className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-                value={val(k as keyof SellerProfile) as string}
-                onChange={(e) => setForm((prev) => ({ ...prev, [k]: e.target.value }))}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-      {p?.verifiedAt && (
-        <p className="text-xs text-green-600">✓ Tasdiqlangan: {new Date(p.verifiedAt).toLocaleDateString('uz-UZ')}</p>
-      )}
-      {err && <p className="text-xs text-destructive">{err}</p>}
-      <div className="flex gap-2">
-        <Button size="sm" disabled={save.isPending} onClick={() => save.mutate(false)}>
-          <Save className="size-3" />
-          Saqlash
-        </Button>
-        {!p?.verifiedAt && (
-          <Button size="sm" variant="success" disabled={save.isPending} onClick={() => save.mutate(true)}>
-            Saqlash & Tasdiqlash
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
+const APPROVE_FIELDS: { k: keyof ApproveForm; label: string; required?: boolean; type?: string }[] = [
+  { k: 'fullName', label: 'To\'liq ism (FIO)', required: true },
+  { k: 'passportOrPinfl', label: 'Pasport / PINFL', required: true },
+  { k: 'stir', label: 'STIR / INN', required: true },
+  { k: 'entityType', label: 'Yuridik shakl (YaTT / MChJ / AJ)', required: true },
+  { k: 'bankCardNumber', label: 'Karta raqami (16 raqam)' },
+  { k: 'bankCardHolderName', label: 'Karta egasi' },
+  { k: 'contractNumber', label: 'Shartnoma raqami' },
+  { k: 'contractDate', label: 'Shartnoma sanasi', type: 'date' },
+  { k: 'adminNotes', label: 'Admin izohi (ichki)' },
+];
 
 export default function ApplicationsPage() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<Filter>('pending');
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
-  const [openProfileId, setOpenProfileId] = useState<string | null>(null);
+  const [approvingApp, setApprovingApp] = useState<SellerApplication | null>(null);
+  const [approveForm, setApproveForm] = useState<ApproveForm>(EMPTY_APPROVE);
+  const [approveErr, setApproveErr] = useState('');
 
   const appsQuery = useQuery({
     queryKey: ['admin', 'applications'],
@@ -147,11 +102,20 @@ export default function ApplicationsPage() {
   const list = filter === 'all' ? all : all.filter((a) => a.status === filter);
 
   const approve = useMutation({
-    mutationFn: async (id: string) => {
-      await api.post(`/sellers/admin/applications/${id}/approve`);
+    mutationFn: async ({ id, form }: { id: string; form: ApproveForm }) => {
+      const body: Record<string, string> = {};
+      (Object.keys(form) as (keyof ApproveForm)[]).forEach((k) => {
+        if (form[k]) body[k] = form[k];
+      });
+      await api.post(`/sellers/admin/applications/${id}/approve`, body);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'applications'] }),
-    onError: (e) => alert(extractErrorMessage(e)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'applications'] });
+      setApprovingApp(null);
+      setApproveForm(EMPTY_APPROVE);
+      setApproveErr('');
+    },
+    onError: (e: unknown) => setApproveErr(extractErrorMessage(e)),
   });
 
   const reject = useMutation({
@@ -163,8 +127,16 @@ export default function ApplicationsPage() {
       setRejectReason('');
       qc.invalidateQueries({ queryKey: ['admin', 'applications'] });
     },
-    onError: (e) => alert(extractErrorMessage(e)),
+    onError: (e: unknown) => alert(extractErrorMessage(e)),
   });
+
+  const openApproveDialog = (app: SellerApplication) => {
+    setApproveForm({ ...EMPTY_APPROVE, fullName: `${app.firstName} ${app.lastName}`.trim() });
+    setApproveErr('');
+    setApprovingApp(app);
+  };
+
+  const requiredFilled = APPROVE_FIELDS.filter((f) => f.required).every((f) => approveForm[f.k].trim());
 
   return (
     <div className="space-y-6 p-6">
@@ -216,44 +188,46 @@ export default function ApplicationsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-base font-bold text-foreground">{app.shopName}</p>
-                        <p className="mt-0.5 truncate text-sm text-muted-foreground">{app.shopAddress}</p>
+                        <p className="truncate text-base font-bold text-foreground">
+                          {app.firstName} {app.lastName}
+                        </p>
+                        {app.contactPhone && (
+                          <p className="mt-0.5 text-sm text-muted-foreground">
+                            Qo'shimcha tel: {app.contactPhone}
+                          </p>
+                        )}
                       </div>
                       <Badge variant={st.variant}>{st.label}</Badge>
                     </div>
 
-                    <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <User className="size-4 text-primary" />
-                        <span className="text-foreground">{app.user.name ?? '—'}</span>
-                        <span>· {app.user.phone}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <MapPin className="size-4 text-primary" />
-                        {app.shopLatitude.toFixed(4)}, {app.shopLongitude.toFixed(4)}
-                      </div>
+                    <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                      <User className="size-4 text-primary" />
+                      <span className="text-foreground">{app.user.name ?? '—'}</span>
+                      <span>· {app.user.phone}</span>
                     </div>
 
-                    {app.stir ? (
-                      <p className="mt-1 text-xs text-muted-foreground">STIR: {app.stir}</p>
-                    ) : null}
+                    {app.note && (
+                      <p className="mt-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+                        {app.note}
+                      </p>
+                    )}
+
                     <p className="mt-1 text-xs text-muted-foreground">
                       {new Date(app.createdAt).toLocaleString('uz-UZ')}
                     </p>
 
-                    {app.status === 'rejected' && app.rejectionReason ? (
+                    {app.status === 'rejected' && app.rejectionReason && (
                       <p className="mt-3 rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">
                         Sabab: {app.rejectionReason}
                       </p>
-                    ) : null}
+                    )}
 
-                    {app.status === 'pending' ? (
+                    {app.status === 'pending' && (
                       <div className="mt-4 flex gap-2">
                         <Button
                           variant="success"
                           size="sm"
-                          disabled={approve.isPending}
-                          onClick={() => approve.mutate(app.id)}>
+                          onClick={() => openApproveDialog(app)}>
                           <Check className="size-4" />
                           Tasdiqlash
                         </Button>
@@ -262,23 +236,7 @@ export default function ApplicationsPage() {
                           Rad etish
                         </Button>
                       </div>
-                    ) : null}
-
-                    {app.status === 'approved' ? (
-                      <div className="mt-3">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setOpenProfileId(openProfileId === app.user.id ? null : app.user.id)}
-                        >
-                          {openProfileId === app.user.id ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-                          Seller profili
-                        </Button>
-                        {openProfileId === app.user.id && (
-                          <SellerProfilePanel userId={app.user.id} />
-                        )}
-                      </div>
-                    ) : null}
+                    )}
                   </div>
                 </div>
               </Card>
@@ -287,7 +245,65 @@ export default function ApplicationsPage() {
         </div>
       )}
 
-      {rejectingId ? (
+      {/* Approve dialog */}
+      {approvingApp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
+          <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
+            <h2 className="text-lg font-bold text-foreground">Seller yaratish</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{approvingApp.firstName} {approvingApp.lastName}</span>
+              {' '}({approvingApp.user.phone}) uchun seller ma'lumotlarini to'ldiring.
+            </p>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {APPROVE_FIELDS.map(({ k, label, required, type }) => (
+                <div key={k} className={k === 'adminNotes' ? 'sm:col-span-2' : ''}>
+                  <label className="mb-0.5 block text-xs font-medium text-muted-foreground">
+                    {label}{required && <span className="text-destructive"> *</span>}
+                  </label>
+                  {k === 'adminNotes' ? (
+                    <textarea
+                      rows={2}
+                      value={approveForm[k]}
+                      onChange={(e) => setApproveForm((p) => ({ ...p, [k]: e.target.value }))}
+                      className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+                    />
+                  ) : (
+                    <input
+                      type={type ?? 'text'}
+                      value={approveForm[k]}
+                      onChange={(e) => setApproveForm((p) => ({ ...p, [k]: e.target.value }))}
+                      className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {approveErr && <p className="mt-3 text-xs text-destructive">{approveErr}</p>}
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setApprovingApp(null); setApproveErr(''); }}>
+                Bekor qilish
+              </Button>
+              <Button
+                variant="success"
+                size="sm"
+                disabled={!requiredFilled || approve.isPending}
+                onClick={() => approve.mutate({ id: approvingApp.id, form: approveForm })}>
+                <Check className="size-4" />
+                Saqlash &amp; Tasdiqlash
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Reject dialog */}
+      {rejectingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
           <Card className="w-full max-w-md p-6">
             <h2 className="text-lg font-bold text-foreground">Arizani rad etish</h2>
@@ -303,10 +319,7 @@ export default function ApplicationsPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  setRejectingId(null);
-                  setRejectReason('');
-                }}>
+                onClick={() => { setRejectingId(null); setRejectReason(''); }}>
                 Bekor qilish
               </Button>
               <Button
@@ -319,7 +332,7 @@ export default function ApplicationsPage() {
             </div>
           </Card>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
