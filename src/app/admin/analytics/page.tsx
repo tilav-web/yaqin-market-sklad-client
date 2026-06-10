@@ -7,8 +7,8 @@ import { PageHeader } from '@/components/admin/page-header';
 import { Card } from '@/components/ui/card';
 import { api } from '@/lib/api';
 
-const money = (n: number) => n.toLocaleString('ru-RU') + " so'm";
-const fmt = (n: number) => n.toLocaleString('ru-RU');
+const money = (n: number) => n.toLocaleString('uz-UZ') + " so'm";
+const fmt = (n: number) => n.toLocaleString('uz-UZ');
 
 interface TopShop { shopId: string; shopName: string; orderCount: number; gmv: number }
 interface TopProduct { productName: string; shopName: string; qtySold: number; revenue: number }
@@ -37,7 +37,7 @@ export default function AdminAnalyticsPage() {
   const maxCount = Math.max(...timeline.map((t) => t.count), 1);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <PageHeader title="Analytics" description="So'nggi 30 kun statistikasi" />
 
       {/* Orders Timeline */}

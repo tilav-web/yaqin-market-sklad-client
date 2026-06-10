@@ -18,7 +18,7 @@ interface OverdueDebt {
   availableBalance: string;
 }
 
-const fmt = (v: string) => Number(v).toLocaleString('ru-RU') + " so'm";
+const fmt = (v: string) => Number(v).toLocaleString('uz-UZ') + " so'm";
 
 export default function AdminDebtsPage() {
   const qc = useQueryClient();
@@ -46,7 +46,7 @@ export default function AdminDebtsPage() {
   const debts = debtsQ.data ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <PageHeader title="Muddati o'tgan qarzlar" description="Qarz to'lanmagan sellerlar" />
 
       {debtsQ.isLoading ? (
@@ -117,7 +117,7 @@ export default function AdminDebtsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={extend.isPending || !extendDays[d.sellerId]}
+                  disabled={extend.isPending || !Number(extendDays[d.sellerId] ?? 0)}
                   onClick={() => extend.mutate({ sellerId: d.sellerId, days: Number(extendDays[d.sellerId] ?? 7) })}
                 >
                   Muddatni uzaytirish
