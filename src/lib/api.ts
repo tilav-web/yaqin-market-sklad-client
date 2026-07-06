@@ -5,6 +5,14 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000
 const ACCESS_COOKIE = 'ym_access';
 const REFRESH_COOKIE = 'ym_refresh';
 
+// `secure` is gated on NODE_ENV (inlined at build time by Next.js) rather than
+// hardcoded true: local dev serves the admin panel over plain http://localhost,
+// and browsers silently refuse to store `secure` cookies on non-https origins —
+// hardcoding it would break the documented local dev / OTP login flow. Prod is
+// served over https, so this still gets the hardening where it matters.
+const isProd = process.env.NODE_ENV === 'production';
+const COOKIE_OPTS = { secure: isProd, sameSite: 'strict' as const };
+
 export const tokenStore = {
   get access() {
     return Cookies.get(ACCESS_COOKIE);
@@ -13,8 +21,8 @@ export const tokenStore = {
     return Cookies.get(REFRESH_COOKIE);
   },
   save(access: string, refresh: string) {
-    Cookies.set(ACCESS_COOKIE, access, { expires: 7 });
-    Cookies.set(REFRESH_COOKIE, refresh, { expires: 30 });
+    Cookies.set(ACCESS_COOKIE, access, { ...COOKIE_OPTS, expires: 7 });
+    Cookies.set(REFRESH_COOKIE, refresh, { ...COOKIE_OPTS, expires: 30 });
   },
   clear() {
     Cookies.remove(ACCESS_COOKIE);
