@@ -1,10 +1,11 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { List, MapPin, Power, PowerOff, Search, Star } from 'lucide-react';
+import { ChevronDown, ChevronUp, List, MapPin, MessageSquareWarning, Power, PowerOff, Search, Star } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 
+import { type AdminComplaint, ComplaintCard } from '@/components/admin/complaint-card';
 import { PageHeader } from '@/components/admin/page-header';
 import { Pagination } from '@/components/admin/pagination';
 import type { ShopPin } from '@/components/admin/shops-map';
@@ -50,12 +51,53 @@ const MAP_LIMIT = 500;
 
 type View = 'table' | 'map';
 
+/**
+ * Inline "Shikoyatlar" panel for one shop row — the shops page has no
+ * separate shop-detail route to hang a tab off, so this slots in as an
+ * expandable row instead of a second navigation path. Uses the dedicated
+ * per-shop endpoint (unpaginated — shop-level complaint volume is small)
+ * rather than the cross-shop queue's paginated list, so its cache key must
+ * stay distinct: ['admin','shop-complaints', shopId].
+ */
+function ShopComplaintsPanel({ shopId }: { shopId: string }) {
+  const complaintsQ = useQuery<AdminComplaint[]>({
+    queryKey: ['admin', 'shop-complaints', shopId],
+    queryFn: async () => (await api.get(`/admin/shops/${shopId}/complaints`)).data,
+  });
+
+  const complaints = complaintsQ.data ?? [];
+  const invalidateKeys = [['admin', 'shop-complaints', shopId]];
+
+  if (complaintsQ.isLoading) {
+    return <p className="p-4 text-sm text-muted-foreground">Yuklanmoqda…</p>;
+  }
+  if (complaintsQ.isError) {
+    return (
+      <p className="p-4 text-sm text-destructive">
+        {extractErrorMessage(complaintsQ.error)} —{' '}
+        <button className="underline" onClick={() => complaintsQ.refetch()}>qayta urinish</button>
+      </p>
+    );
+  }
+  if (complaints.length === 0) {
+    return <p className="p-4 text-sm text-muted-foreground">Bu do&apos;konda shikoyat yo&apos;q.</p>;
+  }
+  return (
+    <div className="space-y-2 p-4">
+      {complaints.map((c) => (
+        <ComplaintCard key={c.id} complaint={c} showShopId={false} invalidateKeys={invalidateKeys} />
+      ))}
+    </div>
+  );
+}
+
 export default function ShopsAdminPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [page, setPage] = useState(0);
   const [view, setView] = useState<View>('table');
+  const [expandedShopId, setExpandedShopId] = useState<string | null>(null);
 
   const shopsQuery = useQuery({
     queryKey: ['admin', 'shops', submitted, page],
@@ -187,7 +229,8 @@ export default function ShopsAdminPage() {
               </thead>
               <tbody>
                 {shops.map((s) => (
-                  <tr key={s.id} className="border-b border-border last:border-0 transition-colors hover:bg-muted/40">
+                  <Fragment key={s.id}>
+                  <tr className="border-b border-border last:border-0 transition-colors hover:bg-muted/40">
                     <td className="px-5 py-3">
                       <p className="font-semibold text-foreground">{s.name}</p>
                       <p className="max-w-xs truncate text-xs text-muted-foreground">{s.address}</p>
@@ -222,7 +265,19 @@ export default function ShopsAdminPage() {
                       </div>
                     </td>
                     <td className="px-5 py-3">
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setExpandedShopId(expandedShopId === s.id ? null : s.id)}>
+                          <MessageSquareWarning className="size-4" />
+                          Shikoyatlar
+                          {expandedShopId === s.id ? (
+                            <ChevronUp className="size-3.5" />
+                          ) : (
+                            <ChevronDown className="size-3.5" />
+                          )}
+                        </Button>
                         <Button
                           variant={s.isActive ? 'ghost' : 'outline'}
                           size="sm"
@@ -246,6 +301,14 @@ export default function ShopsAdminPage() {
                       </div>
                     </td>
                   </tr>
+                  {expandedShopId === s.id ? (
+                    <tr className="border-b border-border bg-muted/10 last:border-0">
+                      <td colSpan={5} className="p-0">
+                        <ShopComplaintsPanel shopId={s.id} />
+                      </td>
+                    </tr>
+                  ) : null}
+                  </Fragment>
                 ))}
                 {shopsQuery.isLoading ? (
                   <tr>
