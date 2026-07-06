@@ -95,6 +95,7 @@ export default function CatalogPage() {
   const [page, setPage] = useState(0);
   const [form, dispatch] = useReducer(formReducer, FORM_INIT);
   const [formError, setFormError] = useState('');
+  const [verifyErr, setVerifyErr] = useState('');
 
   const categoriesQuery = useQuery<Category[]>({
     queryKey: ['admin', 'categories', 'active'],
@@ -163,8 +164,9 @@ export default function CatalogPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'catalog'] });
       qc.invalidateQueries({ queryKey: ['admin', 'catalog-stats'] });
+      setVerifyErr('');
     },
-    onError: (e) => alert(extractErrorMessage(e)),
+    onError: (e) => setVerifyErr(extractErrorMessage(e)),
   });
 
   const items = catalogQuery.data?.items ?? [];
@@ -183,6 +185,10 @@ export default function CatalogPage() {
           </Button>
         }
       />
+
+      {verifyErr && (
+        <p className="rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{verifyErr}</p>
+      )}
 
       {stats && (
         <div className="grid grid-cols-3 gap-4">

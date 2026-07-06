@@ -78,6 +78,7 @@ export default function ApplicationsPage() {
   const [filter, setFilter] = useState<Filter>('pending');
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [rejectErr, setRejectErr] = useState('');
   const [approvingApp, setApprovingApp] = useState<SellerApplication | null>(null);
   const [approveForm, setApproveForm] = useState<ApproveForm>(EMPTY_APPROVE);
   const [approveErr, setApproveErr] = useState('');
@@ -125,9 +126,10 @@ export default function ApplicationsPage() {
     onSuccess: () => {
       setRejectingId(null);
       setRejectReason('');
+      setRejectErr('');
       qc.invalidateQueries({ queryKey: ['admin', 'applications'] });
     },
-    onError: (e: unknown) => alert(extractErrorMessage(e)),
+    onError: (e: unknown) => setRejectErr(extractErrorMessage(e)),
   });
 
   const openApproveDialog = (app: SellerApplication) => {
@@ -315,11 +317,12 @@ export default function ApplicationsPage() {
               rows={3}
               className="mt-4 w-full rounded-lg border border-input bg-card p-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
             />
+            {rejectErr && <p className="mt-2 text-xs text-destructive">{rejectErr}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => { setRejectingId(null); setRejectReason(''); }}>
+                onClick={() => { setRejectingId(null); setRejectReason(''); setRejectErr(''); }}>
                 Bekor qilish
               </Button>
               <Button

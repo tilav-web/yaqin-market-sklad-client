@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Phone } from 'lucide-react';
+import { useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +21,7 @@ interface Inquiry {
 
 export default function InquiriesPage() {
   const qc = useQueryClient();
+  const [markReadErr, setMarkReadErr] = useState('');
 
   const inquiriesQuery = useQuery({
     queryKey: ['admin', 'inquiries'],
@@ -33,8 +35,8 @@ export default function InquiriesPage() {
     mutationFn: async (id: string) => {
       await api.patch(`/admin/contact/${id}/read`);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'inquiries'] }),
-    onError: (e) => alert(extractErrorMessage(e)),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'inquiries'] }); setMarkReadErr(''); },
+    onError: (e) => setMarkReadErr(extractErrorMessage(e)),
   });
 
   const inquiries = inquiriesQuery.data ?? [];
@@ -51,6 +53,10 @@ export default function InquiriesPage() {
             : "Saytdagi 'Biz bilan bog'laning' formasidan kelgan murojaatlar."
         }
       />
+
+      {markReadErr && (
+        <p className="rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{markReadErr}</p>
+      )}
 
       {inquiriesQuery.isLoading ? (
         <Card className="py-16 text-center text-sm text-muted-foreground">Yuklanmoqda…</Card>

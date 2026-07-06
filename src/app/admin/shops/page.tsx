@@ -52,12 +52,14 @@ export default function ShopsAdminPage() {
     },
   });
 
+  const [actionErr, setActionErr] = useState('');
+
   const setActive = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
       await api.patch(`/admin/shops/${id}/active`, { isActive });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'shops'] }),
-    onError: (e) => alert(extractErrorMessage(e)),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'shops'] }); setActionErr(''); },
+    onError: (e) => setActionErr(extractErrorMessage(e)),
   });
 
   const shops = shopsQuery.data?.items ?? [];
@@ -91,6 +93,10 @@ export default function ShopsAdminPage() {
           Qidirish
         </Button>
       </form>
+
+      {actionErr && (
+        <p className="rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{actionErr}</p>
+      )}
 
       <Card className="overflow-hidden">
         <table className="w-full text-sm">

@@ -28,6 +28,8 @@ export default function ReleasesPage() {
   const [version, setVersion] = useState('');
   const [notes, setNotes] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [uploadErr, setUploadErr] = useState('');
+  const [removeErr, setRemoveErr] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   const releasesQuery = useQuery({
@@ -56,16 +58,17 @@ export default function ReleasesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'releases'] });
       reset();
+      setUploadErr('');
     },
-    onError: (e) => alert(extractErrorMessage(e)),
+    onError: (e) => setUploadErr(extractErrorMessage(e)),
   });
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/admin/app-releases/${id}`);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'releases'] }),
-    onError: (e) => alert(extractErrorMessage(e)),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'releases'] }); setRemoveErr(''); },
+    onError: (e) => setRemoveErr(extractErrorMessage(e)),
   });
 
   const releases = releasesQuery.data ?? [];
@@ -102,6 +105,7 @@ export default function ReleasesPage() {
           <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Nima o'zgardi…" />
         </div>
         {file ? <p className="text-xs text-muted-foreground">Tanlangan: {file.name} · {mb(file.size)}</p> : null}
+        {uploadErr && <p className="text-xs text-destructive">{uploadErr}</p>}
         <div className="flex justify-end">
           <Button disabled={!canUpload} onClick={() => upload.mutate()}>
             <Upload className="size-4" />
@@ -109,6 +113,10 @@ export default function ReleasesPage() {
           </Button>
         </div>
       </Card>
+
+      {removeErr && (
+        <p className="rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{removeErr}</p>
+      )}
 
       <Card className="overflow-hidden">
         <table className="w-full text-sm">

@@ -216,6 +216,7 @@ export default function UsersAdminPage() {
   const [adminAction, setAdminAction] = useState<{ user: AdminUser; nextIsAdmin: boolean } | null>(null);
   const [adminReason, setAdminReason] = useState('');
   const [adminErr, setAdminErr] = useState('');
+  const [statusErr, setStatusErr] = useState('');
 
   const usersQuery = useQuery({
     queryKey: ['admin', 'users', state.submitted, state.roleFilter, state.page],
@@ -233,8 +234,8 @@ export default function UsersAdminPage() {
     mutationFn: async ({ id, blocked }: { id: string; blocked: boolean }) => {
       await api.patch(`/admin/users/${id}/status`, { blocked });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
-    onError: (e) => alert(extractErrorMessage(e)),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'users'] }); setStatusErr(''); },
+    onError: (e) => setStatusErr(extractErrorMessage(e)),
   });
 
   const setAdmin = useMutation({
@@ -340,6 +341,10 @@ export default function UsersAdminPage() {
             </div>
           )}
         </div>
+      )}
+
+      {statusErr && (
+        <p className="rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{statusErr}</p>
       )}
 
       <Card className="overflow-hidden">
