@@ -1,7 +1,8 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, ExternalLink, Search, Send, ShieldCheck, ShieldOff, UserCheck, UserX, X } from 'lucide-react';
+import { Bell, ExternalLink, Eye, Search, Send, ShieldCheck, ShieldOff, UserCheck, UserX, X } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useReducer, useState } from 'react';
 
@@ -401,6 +402,11 @@ export default function UsersAdminPage() {
                 </td>
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end gap-1.5">
+                    <Link
+                      href={`/admin/users/detail?id=${u.id}&phone=${encodeURIComponent(u.phone)}`}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-[0.8rem] font-medium text-foreground transition-colors hover:bg-muted">
+                      <Eye className="size-4" /> Batafsil
+                    </Link>
                     <Button variant="ghost" size="sm" disabled={setAdmin.isPending}
                       onClick={() => { setAdminErr(''); setAdminReason(''); setAdminAction({ user: u, nextIsAdmin: !u.isAdmin }); }}>
                       {u.isAdmin ? <ShieldOff className="size-4" /> : <ShieldCheck className="size-4" />}
