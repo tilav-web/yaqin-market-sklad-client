@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, X } from 'lucide-react';
 import { useState } from 'react';
 
+import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,12 +39,15 @@ const STATUS_COLOR: Record<string, BadgeV> = {
 
 const fmt = (v: string) => Number(v).toLocaleString('uz-UZ') + " so'm";
 
+type PendingDecision = { withdrawal: Withdrawal; approve: boolean };
+
 export default function WithdrawalsPage() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<string>('pending');
   const [note, setNote] = useState<Record<string, string>>({});
+  const [pendingDecision, setPendingDecision] = useState<PendingDecision | null>(null);
 
-  const { data, isLoading } = useQuery<Withdrawal[]>({
+  const { data, isLoading, isError, error, refetch } = useQuery<Withdrawal[]>({
     queryKey: ['admin', 'withdrawals', filter],
     queryFn: async () => (await api.get('/admin/balance/withdrawals', { params: { status: filter } })).data,
   });
@@ -51,7 +55,10 @@ export default function WithdrawalsPage() {
   const process = useMutation({
     mutationFn: ({ id, approve, adminNote }: { id: string; approve: boolean; adminNote?: string }) =>
       api.put(`/admin/balance/withdrawals/${id}/process`, { approve, note: adminNote }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'withdrawals'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'withdrawals'] });
+      setPendingDecision(null);
+    },
   });
 
   return (
@@ -75,6 +82,12 @@ export default function WithdrawalsPage() {
       </div>
 
       {isLoading && <p className="mt-4 text-sm text-muted-foreground">Yuklanmoqda…</p>}
+      {isError && (
+        <p className="mt-4 text-sm text-destructive">
+          {extractErrorMessage(error)} —{' '}
+          <button className="underline" onClick={() => refetch()}>qayta urinish</button>
+        </p>
+      )}
 
       <div className="mt-4 space-y-3">
         {(data ?? []).map((w) => (
@@ -107,16 +120,14 @@ export default function WithdrawalsPage() {
                     <Button
                       size="sm"
                       variant="destructive"
-                      disabled={process.isPending}
-                      onClick={() => process.mutate({ id: w.id, approve: false, adminNote: note[w.id] })}
+                      onClick={() => setPendingDecision({ withdrawal: w, approve: false })}
                     >
                       <X className="size-3" />
                       Rad
                     </Button>
                     <Button
                       size="sm"
-                      disabled={process.isPending}
-                      onClick={() => process.mutate({ id: w.id, approve: true, adminNote: note[w.id] })}
+                      onClick={() => setPendingDecision({ withdrawal: w, approve: true })}
                     >
                       <Check className="size-3" />
                       Tasdiqlash
@@ -133,9 +144,43 @@ export default function WithdrawalsPage() {
         )}
       </div>
 
-      {process.isError && (
-        <p className="mt-3 text-sm text-destructive">{extractErrorMessage(process.error)}</p>
-      )}
+      <ConfirmDialog
+        open={!!pendingDecision}
+        title={pendingDecision?.approve ? "Yechish so'rovini tasdiqlash" : "Yechish so'rovini rad etish"}
+        description={pendingDecision && (
+          <div className="space-y-1">
+            <p>
+              Karta egasi: <span className="font-medium text-foreground">{pendingDecision.withdrawal.bankCardHolderName}</span>
+            </p>
+            <p className="font-mono">{pendingDecision.withdrawal.bankCardNumber}</p>
+            <p>
+              Summasi:{' '}
+              <span className="font-semibold text-foreground">{fmt(pendingDecision.withdrawal.amount)}</span>
+            </p>
+            {note[pendingDecision.withdrawal.id] && (
+              <p>Izoh: {note[pendingDecision.withdrawal.id]}</p>
+            )}
+            <p className="mt-2 text-destructive">
+              {pendingDecision.approve
+                ? "Tasdiqlangandan so'ng holat 'jarayonda'ga o'tadi va bank o'tkazmasi amalga oshiriladi — bekor qilib bo'lmaydi."
+                : "Rad etilgan mablag' sotuvchining mavjud balansiga qaytariladi."}
+            </p>
+          </div>
+        )}
+        confirmLabel={pendingDecision?.approve ? 'Ha, tasdiqlash' : 'Ha, rad etish'}
+        destructive={!pendingDecision?.approve}
+        pending={process.isPending}
+        error={process.isError ? extractErrorMessage(process.error) : ''}
+        onConfirm={() => {
+          if (!pendingDecision) return;
+          process.mutate({
+            id: pendingDecision.withdrawal.id,
+            approve: pendingDecision.approve,
+            adminNote: note[pendingDecision.withdrawal.id],
+          });
+        }}
+        onCancel={() => setPendingDecision(null)}
+      />
     </div>
   );
 }

@@ -1,13 +1,14 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useState } from 'react';
 
+import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { api } from '@/lib/api';
+import { Card, Input } from '@/components/ui/card';
+import { api, extractErrorMessage } from '@/lib/api';
 
 interface SellerBalance {
   id: string;
@@ -25,13 +26,47 @@ interface SellerTx {
   description: string | null;
   createdAt: string;
 }
+interface SellerResult {
+  id: string;
+  name: string | null;
+  phone: string;
+}
+interface UsersSearchPage {
+  items: SellerResult[];
+  total: number;
+}
 
 const fmt = (v: string) => Number(v).toLocaleString('uz-UZ') + " so'm";
 
+type PendingAction = { tx: SellerTx; kind: 'settle' | 'refund' };
+
 export default function AdminBalancePage() {
   const [sellerId, setSellerId] = useState('');
-  const [search, setSearch] = useState('');
+  const [selectedSeller, setSelectedSeller] = useState<SellerResult | null>(null);
+  const [query, setQuery] = useState('');
+  const [submittedQuery, setSubmittedQuery] = useState('');
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [actionErr, setActionErr] = useState('');
   const qc = useQueryClient();
+
+  const sellerSearchQ = useQuery<UsersSearchPage>({
+    queryKey: ['admin', 'users', 'seller-search', submittedQuery],
+    queryFn: async () =>
+      (await api.get('/admin/users', { params: { search: submittedQuery, sellerOnly: 'true', limit: 10 } })).data,
+    enabled: submittedQuery.trim().length > 0,
+  });
+
+  const pickSeller = (s: SellerResult) => {
+    setSelectedSeller(s);
+    setSellerId(s.id);
+    setSubmittedQuery('');
+    setQuery('');
+  };
+
+  const clearSeller = () => {
+    setSelectedSeller(null);
+    setSellerId('');
+  };
 
   const balQ = useQuery<SellerBalance>({
     queryKey: ['admin', 'balance', sellerId],
@@ -52,7 +87,10 @@ export default function AdminBalancePage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'balance', sellerId] });
       qc.invalidateQueries({ queryKey: ['admin', 'txs', sellerId] });
+      setPendingAction(null);
+      setActionErr('');
     },
+    onError: (e) => setActionErr(extractErrorMessage(e)),
   });
 
   const forceRefund = useMutation({
@@ -60,30 +98,99 @@ export default function AdminBalancePage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'balance', sellerId] });
       qc.invalidateQueries({ queryKey: ['admin', 'txs', sellerId] });
+      setPendingAction(null);
+      setActionErr('');
     },
+    onError: (e) => setActionErr(extractErrorMessage(e)),
   });
+
+  const openConfirm = (tx: SellerTx, kind: 'settle' | 'refund') => {
+    setActionErr('');
+    setPendingAction({ tx, kind });
+  };
+
+  const confirmAction = () => {
+    if (!pendingAction) return;
+    if (pendingAction.kind === 'settle') forceSettle.mutate(pendingAction.tx.id);
+    else forceRefund.mutate(pendingAction.tx.id);
+  };
 
   return (
     <div className="p-6">
-      <PageHeader title="Balanslar" description="Seller ID bo'yicha balans va tranzaksiyalar" />
+      <PageHeader title="Balanslar" description="Sotuvchi bo'yicha balans va tranzaksiyalar" />
 
-      <div className="mt-6 flex gap-2">
-        <input
-          className="w-80 rounded-md border border-border bg-background px-3 py-2 text-sm"
-          placeholder="Seller userId kiriting..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <button
-          className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-          onClick={() => setSellerId(search.trim())}
-        >
-          <Search className="size-4" />
-          Ko'rish
-        </button>
+      <div className="mt-6 max-w-md space-y-2">
+        {selectedSeller ? (
+          <Card className="flex items-center gap-3 px-4 py-2.5">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">{selectedSeller.name || '—'}</p>
+              <p className="text-xs text-muted-foreground">{selectedSeller.phone}</p>
+            </div>
+            <button
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+              onClick={clearSeller}
+              title="Boshqa sotuvchini qidirish">
+              <X className="size-4" />
+            </button>
+          </Card>
+        ) : (
+          <>
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => { e.preventDefault(); setSubmittedQuery(query.trim()); }}>
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  placeholder="Sotuvchi ismi yoki telefon raqami..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+              </div>
+              <button
+                type="submit"
+                className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+                Qidirish
+              </button>
+            </form>
+
+            {submittedQuery && (
+              <Card className="divide-y overflow-hidden">
+                {sellerSearchQ.isLoading ? (
+                  <p className="p-3 text-sm text-muted-foreground">Qidirilmoqda…</p>
+                ) : sellerSearchQ.isError ? (
+                  <p className="p-3 text-sm text-destructive">
+                    {extractErrorMessage(sellerSearchQ.error)} —{' '}
+                    <button className="underline" onClick={() => sellerSearchQ.refetch()}>qayta urinish</button>
+                  </p>
+                ) : (sellerSearchQ.data?.items.length ?? 0) === 0 ? (
+                  <p className="p-3 text-sm text-muted-foreground">Sotuvchi topilmadi</p>
+                ) : (
+                  sellerSearchQ.data!.items.map((s) => (
+                    <button
+                      key={s.id}
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/50 transition-colors"
+                      onClick={() => pickSeller(s)}>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground">{s.name || '—'}</p>
+                        <p className="text-xs text-muted-foreground">{s.phone}</p>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </Card>
+            )}
+          </>
+        )}
       </div>
 
       {balQ.isLoading && <p className="mt-4 text-sm text-muted-foreground">Yuklanmoqda…</p>}
+      {balQ.isError && (
+        <p className="mt-4 text-sm text-destructive">
+          {extractErrorMessage(balQ.error)} —{' '}
+          <button className="underline" onClick={() => balQ.refetch()}>qayta urinish</button>
+        </p>
+      )}
 
       {b && (
         <>
@@ -107,6 +214,12 @@ export default function AdminBalancePage() {
 
           <h3 className="mt-6 text-sm font-semibold">Tranzaksiyalar</h3>
           {txQ.isLoading && <p className="mt-2 text-sm text-muted-foreground">Yuklanmoqda…</p>}
+          {txQ.isError && (
+            <p className="mt-2 text-sm text-destructive">
+              {extractErrorMessage(txQ.error)} —{' '}
+              <button className="underline" onClick={() => txQ.refetch()}>qayta urinish</button>
+            </p>
+          )}
           <div className="mt-2 space-y-2">
             {(txQ.data ?? []).map((tx) => (
               <Card key={tx.id} className="flex items-center gap-3 px-4 py-2.5">
@@ -125,15 +238,13 @@ export default function AdminBalancePage() {
                   <div className="flex gap-1">
                     <button
                       className="text-xs rounded px-2 py-1 bg-green-100 text-green-800 hover:bg-green-200"
-                      onClick={() => forceSettle.mutate(tx.id)}
-                      disabled={forceSettle.isPending}
+                      onClick={() => openConfirm(tx, 'settle')}
                     >
                       Settle
                     </button>
                     <button
                       className="text-xs rounded px-2 py-1 bg-red-100 text-red-800 hover:bg-red-200"
-                      onClick={() => forceRefund.mutate(tx.id)}
-                      disabled={forceRefund.isPending}
+                      onClick={() => openConfirm(tx, 'refund')}
                     >
                       Refund
                     </button>
@@ -144,6 +255,33 @@ export default function AdminBalancePage() {
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={!!pendingAction}
+        title={pendingAction?.kind === 'settle' ? "Tranzaksiyani majburiy hisobga qo'shish" : 'Mablag’ni majburiy qaytarish'}
+        description={pendingAction && (
+          <div className="space-y-1">
+            <p>
+              Sotuvchi: <span className="font-medium text-foreground">{selectedSeller?.name || sellerId}</span>
+            </p>
+            <p>
+              Summasi:{' '}
+              <span className="font-semibold text-foreground">{fmt(pendingAction.tx.amount)}</span>
+            </p>
+            {pendingAction.tx.description && <p>{pendingAction.tx.description}</p>}
+            <p className="mt-2 text-destructive">
+              {pendingAction.kind === 'settle'
+                ? "Bu amal 24 soatlik himoya muddatini kutmasdan mablag'ni sotuvchining mavjud balansiga darhol o'tkazadi. Haqiqiy bank/hisob operatsiyasi — bekor qilib bo'lmaydi."
+                : "Bu amal mablag'ni kutmasdan xaridorga qaytaradi va tranzaksiyani yopiladi. Haqiqiy pul operatsiyasi — bekor qilib bo'lmaydi."}
+            </p>
+          </div>
+        )}
+        confirmLabel={pendingAction?.kind === 'settle' ? "Ha, hisobga qo'shish" : 'Ha, qaytarish'}
+        pending={forceSettle.isPending || forceRefund.isPending}
+        error={actionErr}
+        onConfirm={confirmAction}
+        onCancel={() => { setPendingAction(null); setActionErr(''); }}
+      />
     </div>
   );
 }
