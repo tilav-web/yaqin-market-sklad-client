@@ -4,9 +4,10 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Package, Phone, ShieldCheck, Store, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
+import { Pagination } from '@/components/admin/pagination';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -22,6 +23,52 @@ interface AdminUser {
   createdAt: string;
 }
 interface UsersPage { items: AdminUser[]; total: number }
+
+type OrderStatus = 'new' | 'accepted' | 'preparing' | 'delivering' | 'delivered' | 'cancelled';
+
+interface AdminOrderItem {
+  id: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  returnedQuantity: number;
+}
+
+interface AdminOrder {
+  id: string;
+  orderNumber: string;
+  status: OrderStatus;
+  channel: 'delivery' | 'in_store';
+  total: number;
+  createdAt: string;
+  shop: { id: string; name: string } | null;
+  items: AdminOrderItem[];
+}
+
+interface OrdersPage { items: AdminOrder[]; total: number }
+
+const ORDERS_PAGE_SIZE = 10;
+
+const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
+  new: 'Yangi',
+  accepted: 'Qabul qilingan',
+  preparing: 'Tayyorlanmoqda',
+  delivering: 'Yetkazilmoqda',
+  delivered: 'Yetkazib berilgan',
+  cancelled: 'Bekor qilingan',
+};
+
+const ORDER_STATUS_VARIANT: Record<OrderStatus, 'neutral' | 'primary' | 'success' | 'warning' | 'danger'> = {
+  new: 'neutral',
+  accepted: 'primary',
+  preparing: 'warning',
+  delivering: 'warning',
+  delivered: 'success',
+  cancelled: 'danger',
+};
+
+const money = (n: number) => n.toLocaleString('uz-UZ') + " so'm";
 
 function UserDetailInner() {
   const searchParams = useSearchParams();
@@ -39,6 +86,24 @@ function UserDetailInner() {
   });
 
   const user = userQuery.data?.items.find((u) => u.id === id) ?? userQuery.data?.items[0];
+
+  const [ordersPage, setOrdersPage] = useState(0);
+
+  // Distinct from the ['admin', 'users', 'detail', phone] key above — that one
+  // resolves *this* user's profile via search, this one paginates their order
+  // history via a different endpoint, so they must not collide.
+  const ordersQuery = useQuery<OrdersPage>({
+    queryKey: ['admin', 'users', 'orders', id, ordersPage],
+    queryFn: async () =>
+      (
+        await api.get(`/admin/users/${id}/orders`, {
+          params: { limit: ORDERS_PAGE_SIZE, offset: ordersPage * ORDERS_PAGE_SIZE },
+        })
+      ).data,
+    enabled: !!id,
+  });
+  const orders = ordersQuery.data?.items ?? [];
+  const ordersTotal = ordersQuery.data?.total ?? 0;
 
   return (
     <div className="space-y-6 p-6">
@@ -94,20 +159,65 @@ function UserDetailInner() {
           </Card>
 
           <Card className="p-5">
-            <div className="flex items-center gap-2">
-              <Package className="size-5 text-primary" />
-              <h2 className="text-sm font-semibold">Buyurtmalar tarixi</h2>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Package className="size-5 text-primary" />
+                <h2 className="text-sm font-semibold">Buyurtmalar tarixi</h2>
+              </div>
+              {ordersTotal > 0 && (
+                <span className="text-xs text-muted-foreground">{ordersTotal} ta buyurtma</span>
+              )}
             </div>
-            <div className="mt-3 rounded-lg border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-              <p className="font-medium text-foreground">Backend API hozircha yo&apos;q</p>
-              <p className="mt-1">
-                Bu foydalanuvchining buyurtmalar tarixini ko&apos;rsatish uchun serverda userId bo&apos;yicha
-                filtrlaydigan endpoint kerak (masalan <code className="rounded bg-muted px-1">GET /admin/orders?userId=</code>).
-                Hozirgi <code className="rounded bg-muted px-1">orders</code> modulida faqat joriy foydalanuvchi
-                uchun <code className="rounded bg-muted px-1">GET orders/mine</code> va <code className="rounded bg-muted px-1">GET orders/:id</code> bor —
-                boshqa foydalanuvchining buyurtmalarini admin nomidan olib bo&apos;lmaydi.
+
+            {ordersQuery.isLoading ? (
+              <p className="mt-3 text-sm text-muted-foreground">Yuklanmoqda…</p>
+            ) : ordersQuery.isError ? (
+              <p className="mt-3 text-sm text-destructive">
+                {extractErrorMessage(ordersQuery.error)} —{' '}
+                <button className="underline" onClick={() => ordersQuery.refetch()}>qayta urinish</button>
               </p>
-            </div>
+            ) : orders.length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">Bu foydalanuvchida buyurtmalar yo&apos;q.</p>
+            ) : (
+              <>
+                <div className="mt-3 space-y-3">
+                  {orders.map((o) => (
+                    <div key={o.id} className="rounded-lg border border-border p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-semibold text-foreground">#{o.orderNumber}</span>
+                          <Badge variant={ORDER_STATUS_VARIANT[o.status]}>{ORDER_STATUS_LABEL[o.status]}</Badge>
+                          {o.channel === 'in_store' && <Badge variant="neutral">Do&apos;konda</Badge>}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(o.createdAt).toLocaleString('uz-UZ')}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {o.shop?.name ?? "Do'kon o'chirilgan"}
+                      </p>
+                      <div className="mt-2 space-y-0.5 border-t border-border pt-2 text-xs text-muted-foreground">
+                        {o.items.map((it) => (
+                          <div key={it.id} className="flex items-center justify-between gap-2">
+                            <span className="truncate">
+                              {it.productName} × {it.quantity}
+                              {it.returnedQuantity > 0 ? ` (${it.returnedQuantity} qaytarilgan)` : ''}
+                            </span>
+                            <span className="shrink-0">{money(it.lineTotal)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-2 flex justify-end border-t border-border pt-2">
+                        <span className="text-sm font-bold text-foreground">{money(o.total)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3">
+                  <Pagination page={ordersPage} pageSize={ORDERS_PAGE_SIZE} total={ordersTotal} onPage={setOrdersPage} />
+                </div>
+              </>
+            )}
           </Card>
 
           {user.isSellerApproved && (
