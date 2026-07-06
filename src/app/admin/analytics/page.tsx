@@ -1,11 +1,18 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Package, Store, TrendingUp } from 'lucide-react';
+import { Filter, MapPin, Package, Store, TrendingUp } from 'lucide-react';
+import dynamic from 'next/dynamic';
 
 import { PageHeader } from '@/components/admin/page-header';
+import type { ShopPin } from '@/components/admin/shops-map';
 import { Card } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+
+const ShopsMap = dynamic(() => import('@/components/admin/shops-map'), {
+  ssr: false,
+  loading: () => <div className="h-[420px] w-full animate-pulse rounded-xl bg-muted/30" />,
+});
 
 const money = (n: number) => n.toLocaleString('uz-UZ') + " so'm";
 const fmt = (n: number) => n.toLocaleString('uz-UZ');
@@ -13,6 +20,10 @@ const fmt = (n: number) => n.toLocaleString('uz-UZ');
 interface TopShop { shopId: string; shopName: string; orderCount: number; gmv: number }
 interface TopProduct { productName: string; shopName: string; qtySold: number; revenue: number }
 interface TimelinePoint { date: string; count: number; gmv: number }
+interface GeoShop { id: string; name: string; address: string; latitude: number; longitude: number; isActive: boolean }
+interface ShopsPageResponse { items: GeoShop[]; total: number }
+
+const GEO_LIMIT = 500;
 
 export default function AdminAnalyticsPage() {
   const shopsQ = useQuery<TopShop[]>({
@@ -32,6 +43,14 @@ export default function AdminAnalyticsPage() {
     queryFn: async () => (await api.get('/admin/analytics/timeline?days=30')).data,
     refetchInterval: 60_000,
   });
+
+  // Geographic distribution — GET /admin/shops already returns lat/lng per
+  // shop (see admin/shops page), so this is real data, not fabricated.
+  const geoQ = useQuery<ShopsPageResponse>({
+    queryKey: ['admin', 'shops', 'map', ''],
+    queryFn: async () => (await api.get('/admin/shops', { params: { limit: GEO_LIMIT, offset: 0 } })).data,
+  });
+  const geoShops = geoQ.data?.items ?? [];
 
   const timeline = timelineQ.data ?? [];
   const maxCount = Math.max(...timeline.map((t) => t.count), 1);
@@ -150,6 +169,55 @@ export default function AdminAnalyticsPage() {
           )}
         </Card>
       </div>
+
+      {/* Geographic distribution */}
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <MapPin className="w-5 h-5 text-primary" />
+          <h2 className="font-semibold">Geografik tarqalish</h2>
+        </div>
+        {geoQ.isLoading ? (
+          <div className="h-[420px] flex items-center justify-center text-muted-foreground text-sm">Yuklanmoqda…</div>
+        ) : geoQ.isError ? (
+          <div className="h-[420px] flex items-center justify-center text-destructive text-sm">
+            {extractErrorMessage(geoQ.error)} —{' '}
+            <button className="underline ml-1" onClick={() => geoQ.refetch()}>qayta urinish</button>
+          </div>
+        ) : geoShops.length === 0 ? (
+          <div className="h-[420px] flex items-center justify-center text-muted-foreground text-sm">Ma&apos;lumot yo&apos;q</div>
+        ) : (
+          <>
+            <ShopsMap
+              shops={geoShops.map((s): ShopPin => ({
+                id: s.id, name: s.name, address: s.address,
+                latitude: s.latitude, longitude: s.longitude, isActive: s.isActive,
+              }))}
+            />
+            <p className="mt-2 text-xs text-muted-foreground">
+              {geoShops.length} ta do&apos;kon joylashuvi — yashil nuqta faol, qizil nuqta o&apos;chirilgan do&apos;konni bildiradi.
+            </p>
+          </>
+        )}
+      </Card>
+
+      {/* Conversion funnel — backend gap, see report */}
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter className="w-5 h-5 text-primary" />
+          <h2 className="font-semibold">Konversiya: ko&apos;rilgan → savat → buyurtma</h2>
+        </div>
+        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">Backend API hozircha yo&apos;q</p>
+          <p className="mt-1">
+            Bu funnel uchun mahsulot ko&apos;rish (view) va savatga qo&apos;shish (add-to-cart) hodisalarini
+            qayd qiluvchi hech qanday jadval yoki modul serverda mavjud emas — faqat yakuniy buyurtmalar
+            saqlanadi. Funnel ko&apos;rsatish uchun avval backendda event-tracking (masalan
+            &nbsp;<code className="rounded bg-muted px-1">product_view_events</code> /{' '}
+            <code className="rounded bg-muted px-1">cart_add_events</code>) qo&apos;shish kerak — soxta
+            raqamlar bilan to&apos;ldirish o&apos;rniga bu yerda ochiq belgilab qo&apos;yildi.
+          </p>
+        </div>
+      </Card>
     </div>
   );
 }
