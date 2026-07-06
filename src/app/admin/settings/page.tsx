@@ -21,7 +21,7 @@ export default function SettingsPage() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Record<string, string>>({});
 
-  const { data, isLoading } = useQuery<Setting[]>({
+  const { data, isLoading, isError, error, refetch } = useQuery<Setting[]>({
     queryKey: ['admin', 'settings'],
     queryFn: async () => (await api.get('/admin/settings')).data,
   });
@@ -36,6 +36,15 @@ export default function SettingsPage() {
   });
 
   if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Yuklanmoqda…</div>;
+
+  if (isError) {
+    return (
+      <div className="p-6 text-sm text-destructive">
+        {extractErrorMessage(error)} —{' '}
+        <button className="underline" onClick={() => refetch()}>qayta urinish</button>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl p-6">

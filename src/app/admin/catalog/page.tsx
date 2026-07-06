@@ -97,7 +97,7 @@ export default function CatalogPage() {
   const [formError, setFormError] = useState('');
 
   const categoriesQuery = useQuery<Category[]>({
-    queryKey: ['admin', 'categories'],
+    queryKey: ['admin', 'categories', 'active'],
     queryFn: async () => (await api.get('/categories')).data,
     staleTime: 5 * 60_000,
   });

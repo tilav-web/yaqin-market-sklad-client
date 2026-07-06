@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
-import { useReducer } from 'react';
+import { useReducer, useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -63,9 +63,11 @@ function formReducer(state: FormState, action: FormAction): FormState {
 export default function CategoriesPage() {
   const qc = useQueryClient();
   const [form, dispatch] = useReducer(formReducer, FORM_INIT);
+  const [formErr, setFormErr] = useState('');
+  const [listErr, setListErr] = useState('');
 
   const treeQuery = useQuery({
-    queryKey: ['admin', 'categories'],
+    queryKey: ['admin', 'categories', 'all'],
     queryFn: async () => (await api.get<Category[]>('/categories/admin/all')).data,
   });
 
@@ -76,22 +78,22 @@ export default function CategoriesPage() {
         nameRu: form.nameRu, parentId: form.parentId ?? undefined,
       });
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'categories'] }); dispatch({ type: 'CLOSE' }); },
-    onError: (e) => alert(extractErrorMessage(e)),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'categories', 'all'] }); dispatch({ type: 'CLOSE' }); setFormErr(''); },
+    onError: (e) => setFormErr(extractErrorMessage(e)),
   });
 
   const remove = useMutation({
     mutationFn: async (id: string) => { await api.delete(`/categories/${id}`); },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'categories'] }),
-    onError: (e) => alert(extractErrorMessage(e)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'categories', 'all'] }),
+    onError: (e) => setListErr(extractErrorMessage(e)),
   });
 
   const update = useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<Category> }) => {
       await api.patch(`/categories/${id}`, patch);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'categories'] }),
-    onError: (e) => alert(extractErrorMessage(e)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'categories', 'all'] }),
+    onError: (e) => setListErr(extractErrorMessage(e)),
   });
 
   return (
@@ -109,6 +111,9 @@ export default function CategoriesPage() {
       />
 
       <Card className="p-3">
+        {listErr && !form.editing && (
+          <p className="mb-2 rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{listErr}</p>
+        )}
         {treeQuery.isError ? (
           <p className="px-3 py-10 text-center text-sm text-destructive">
             {extractErrorMessage(treeQuery.error)} —{' '}
@@ -117,8 +122,8 @@ export default function CategoriesPage() {
         ) : treeQuery.data && treeQuery.data.length > 0 ? (
           <CategoryList
             items={treeQuery.data}
-            onAddChild={(id) => dispatch({ type: 'OPEN_CREATE', parentId: id })}
-            onEdit={(c) => dispatch({ type: 'OPEN_EDIT', category: c })}
+            onAddChild={(id) => { setListErr(''); dispatch({ type: 'OPEN_CREATE', parentId: id }); }}
+            onEdit={(c) => { setListErr(''); dispatch({ type: 'OPEN_EDIT', category: c }); }}
             onToggleActive={(c) => update.mutate({ id: c.id, patch: { isActive: !c.isActive } })}
             onDelete={(id) => remove.mutate(id)}
           />
@@ -146,8 +151,9 @@ export default function CategoriesPage() {
             <Field label="Nomi (русский)">
               <Input value={form.nameRu} onChange={(e) => dispatch({ type: 'SET', field: 'nameRu', value: e.target.value })} placeholder="Продукты" />
             </Field>
+            {formErr && <p className="text-xs text-destructive">{formErr}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="ghost" size="sm" onClick={() => dispatch({ type: 'CLOSE' })}>Bekor</Button>
+              <Button variant="ghost" size="sm" onClick={() => { dispatch({ type: 'CLOSE' }); setFormErr(''); }}>Bekor</Button>
               <Button size="sm"
                 disabled={!form.slug || !form.nameUzLatn || !form.nameUzCyrl || !form.nameRu || create.isPending}
                 onClick={() => create.mutate()}>
@@ -162,8 +168,11 @@ export default function CategoriesPage() {
         <EditCategoryModal
           category={form.editing}
           pending={update.isPending}
-          onClose={() => dispatch({ type: 'CLOSE_EDIT' })}
-          onSave={(patch) => update.mutate({ id: form.editing!.id, patch }, { onSuccess: () => dispatch({ type: 'CLOSE_EDIT' }) })}
+          error={listErr}
+          onClose={() => { dispatch({ type: 'CLOSE_EDIT' }); setListErr(''); }}
+          onSave={(patch) => update.mutate({ id: form.editing!.id, patch }, {
+            onSuccess: () => { dispatch({ type: 'CLOSE_EDIT' }); setListErr(''); },
+          })}
         />
       )}
     </div>
@@ -226,9 +235,10 @@ function editReducer(state: EditState, action: EditAction): EditState {
   return { ...state, [action.field]: action.value };
 }
 
-function EditCategoryModal({ category, pending, onClose, onSave }: {
+function EditCategoryModal({ category, pending, error, onClose, onSave }: {
   category: Category;
   pending: boolean;
+  error?: string;
   onClose: () => void;
   onSave: (patch: Partial<Category>) => void;
 }) {
@@ -251,6 +261,7 @@ function EditCategoryModal({ category, pending, onClose, onSave }: {
         <Field label="Nomi (kirill)"><Input value={state.nameUzCyrl} onChange={set('nameUzCyrl')} /></Field>
         <Field label="Nomi (русский)"><Input value={state.nameRu} onChange={set('nameRu')} /></Field>
         <Field label="Tartib raqami"><Input type="number" value={state.sortOrder} onChange={set('sortOrder')} /></Field>
+        {error && <p className="text-xs text-destructive">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" size="sm" onClick={onClose}>Bekor</Button>
           <Button size="sm"

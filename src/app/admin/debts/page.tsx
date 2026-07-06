@@ -34,13 +34,21 @@ export default function AdminDebtsPage() {
   const forgive = useMutation({
     mutationFn: ({ sellerId, reason }: { sellerId: string; reason: string }) =>
       api.post(`/admin/balance/sellers/${sellerId}/forgive-debt`, { reason }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'overdue-debts'] }),
+    onSuccess: (_, { sellerId }) => {
+      qc.invalidateQueries({ queryKey: ['admin', 'overdue-debts'] });
+      setReasonDrafts((p) => { const next = { ...p }; delete next[sellerId]; return next; });
+      setExtendDays((p) => { const next = { ...p }; delete next[sellerId]; return next; });
+    },
   });
 
   const extend = useMutation({
     mutationFn: ({ sellerId, days }: { sellerId: string; days: number }) =>
       api.post(`/admin/balance/sellers/${sellerId}/extend-debt`, { days }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'overdue-debts'] }),
+    onSuccess: (_, { sellerId }) => {
+      qc.invalidateQueries({ queryKey: ['admin', 'overdue-debts'] });
+      setReasonDrafts((p) => { const next = { ...p }; delete next[sellerId]; return next; });
+      setExtendDays((p) => { const next = { ...p }; delete next[sellerId]; return next; });
+    },
   });
 
   const debts = debtsQ.data ?? [];

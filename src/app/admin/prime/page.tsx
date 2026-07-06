@@ -154,7 +154,10 @@ export default function AdminPrimePage() {
                     Bekor
                   </Button>
                 )}
-                <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>
+                <Button
+                  size="sm"
+                  disabled={!form.name.trim() || !form.monthlyPrice.trim() || !form.commissionRate.trim() || save.isPending}
+                  onClick={() => save.mutate()}>
                   <Plus className="size-3" />
                   {editing ? 'Saqlash' : 'Qo\'shish'}
                 </Button>

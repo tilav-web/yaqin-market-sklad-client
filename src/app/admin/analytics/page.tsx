@@ -5,7 +5,7 @@ import { Package, Store, TrendingUp } from 'lucide-react';
 
 import { PageHeader } from '@/components/admin/page-header';
 import { Card } from '@/components/ui/card';
-import { api } from '@/lib/api';
+import { api, extractErrorMessage } from '@/lib/api';
 
 const money = (n: number) => n.toLocaleString('uz-UZ') + " so'm";
 const fmt = (n: number) => n.toLocaleString('uz-UZ');
@@ -48,6 +48,11 @@ export default function AdminAnalyticsPage() {
         </div>
         {timelineQ.isLoading ? (
           <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">Yuklanmoqda…</div>
+        ) : timelineQ.isError ? (
+          <div className="h-32 flex items-center justify-center text-destructive text-sm">
+            {extractErrorMessage(timelineQ.error)} —{' '}
+            <button className="underline ml-1" onClick={() => timelineQ.refetch()}>qayta urinish</button>
+          </div>
         ) : timeline.length === 0 ? (
           <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">Ma'lumot yo'q</div>
         ) : (
@@ -84,6 +89,11 @@ export default function AdminAnalyticsPage() {
           </div>
           {shopsQ.isLoading ? (
             <p className="text-sm text-muted-foreground">Yuklanmoqda…</p>
+          ) : shopsQ.isError ? (
+            <p className="text-sm text-destructive">
+              {extractErrorMessage(shopsQ.error)} —{' '}
+              <button className="underline" onClick={() => shopsQ.refetch()}>qayta urinish</button>
+            </p>
           ) : (shopsQ.data ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">Ma'lumot yo'q</p>
           ) : (
@@ -112,6 +122,11 @@ export default function AdminAnalyticsPage() {
           </div>
           {productsQ.isLoading ? (
             <p className="text-sm text-muted-foreground">Yuklanmoqda…</p>
+          ) : productsQ.isError ? (
+            <p className="text-sm text-destructive">
+              {extractErrorMessage(productsQ.error)} —{' '}
+              <button className="underline" onClick={() => productsQ.refetch()}>qayta urinish</button>
+            </p>
           ) : (productsQ.data ?? []).length === 0 ? (
             <p className="text-sm text-muted-foreground">Ma'lumot yo'q</p>
           ) : (

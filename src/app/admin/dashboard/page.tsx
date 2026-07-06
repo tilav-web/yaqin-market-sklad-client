@@ -5,7 +5,7 @@ import { BarChart3, Package, ShoppingBag, Store, TrendingUp, Users } from 'lucid
 
 import { PageHeader } from '@/components/admin/page-header';
 import { Card } from '@/components/ui/card';
-import { api } from '@/lib/api';
+import { api, extractErrorMessage } from '@/lib/api';
 
 interface DashboardStats {
   totalUsers: number;
@@ -50,7 +50,7 @@ function StatCard({
 }
 
 export default function AdminDashboardPage() {
-  const { data, isLoading } = useQuery<DashboardStats>({
+  const { data, isLoading, isError, error, refetch } = useQuery<DashboardStats>({
     queryKey: ['admin', 'dashboard'],
     queryFn: async () => (await api.get('/admin/analytics/dashboard')).data,
     refetchInterval: 60_000,
@@ -60,6 +60,17 @@ export default function AdminDashboardPage() {
     return (
       <div className="flex h-full items-center justify-center">
         <p className="text-sm text-muted-foreground">Yuklanmoqda…</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-sm text-destructive">
+          {extractErrorMessage(error)} —{' '}
+          <button className="underline" onClick={() => refetch()}>qayta urinish</button>
+        </p>
       </div>
     );
   }
