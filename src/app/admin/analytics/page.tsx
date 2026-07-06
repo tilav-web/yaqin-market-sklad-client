@@ -1,12 +1,13 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Filter, MapPin, Package, Store, TrendingUp } from 'lucide-react';
+import { ChevronRight, Filter, MapPin, Package, Store, TrendingUp } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
 import type { ShopPin } from '@/components/admin/shops-map';
-import { Card } from '@/components/ui/card';
+import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
 
 const ShopsMap = dynamic(() => import('@/components/admin/shops-map'), {
@@ -16,14 +17,27 @@ const ShopsMap = dynamic(() => import('@/components/admin/shops-map'), {
 
 const money = (n: number) => n.toLocaleString('uz-UZ') + " so'm";
 const fmt = (n: number) => n.toLocaleString('uz-UZ');
+const toISODate = (d: Date) => d.toISOString().slice(0, 10);
+const daysAgo = (days: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return toISODate(d);
+};
+const pct = (num: number, den: number) => (den > 0 ? `${((num / den) * 100).toFixed(1)}%` : '—');
 
 interface TopShop { shopId: string; shopName: string; orderCount: number; gmv: number }
 interface TopProduct { productName: string; shopName: string; qtySold: number; revenue: number }
 interface TimelinePoint { date: string; count: number; gmv: number }
 interface GeoShop { id: string; name: string; address: string; latitude: number; longitude: number; isActive: boolean }
 interface ShopsPageResponse { items: GeoShop[]; total: number }
+interface FunnelResponse { from: string; to: string; productViews: number; addToCart: number; orders: number }
 
 const GEO_LIMIT = 500;
+const FUNNEL_PRESETS = [
+  { label: '7 kun', days: 7 },
+  { label: '30 kun', days: 30 },
+  { label: '90 kun', days: 90 },
+];
 
 export default function AdminAnalyticsPage() {
   const shopsQ = useQuery<TopShop[]>({
@@ -51,6 +65,23 @@ export default function AdminAnalyticsPage() {
     queryFn: async () => (await api.get('/admin/shops', { params: { limit: GEO_LIMIT, offset: 0 } })).data,
   });
   const geoShops = geoQ.data?.items ?? [];
+
+  // Conversion funnel — date range defaults to the last 30 days, same window
+  // as the rest of this page's fixed stats, but is adjustable here since the
+  // funnel is the one aggregate that takes an explicit from/to.
+  const [funnelFrom, setFunnelFrom] = useState(() => daysAgo(30));
+  const [funnelTo, setFunnelTo] = useState(() => toISODate(new Date()));
+
+  const funnelQ = useQuery<FunnelResponse>({
+    queryKey: ['admin', 'analytics', 'funnel', funnelFrom, funnelTo],
+    queryFn: async () =>
+      (await api.get('/admin/analytics/funnel', { params: { from: funnelFrom, to: funnelTo } })).data,
+  });
+
+  const setFunnelPreset = (days: number) => {
+    setFunnelTo(toISODate(new Date()));
+    setFunnelFrom(daysAgo(days));
+  };
 
   const timeline = timelineQ.data ?? [];
   const maxCount = Math.max(...timeline.map((t) => t.count), 1);
@@ -200,23 +231,90 @@ export default function AdminAnalyticsPage() {
         )}
       </Card>
 
-      {/* Conversion funnel — backend gap, see report */}
+      {/* Conversion funnel */}
       <Card className="p-4">
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="w-5 h-5 text-primary" />
-          <h2 className="font-semibold">Konversiya: ko&apos;rilgan → savat → buyurtma</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <Filter className="w-5 h-5 text-primary" />
+            <h2 className="font-semibold">Konversiya: ko&apos;rilgan → savat → buyurtma</h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              type="date"
+              value={funnelFrom}
+              max={funnelTo}
+              onChange={(e) => setFunnelFrom(e.target.value)}
+              className="w-auto"
+            />
+            <span className="text-sm text-muted-foreground">—</span>
+            <Input
+              type="date"
+              value={funnelTo}
+              min={funnelFrom}
+              max={toISODate(new Date())}
+              onChange={(e) => setFunnelTo(e.target.value)}
+              className="w-auto"
+            />
+            <div className="flex rounded-lg border border-border overflow-hidden">
+              {FUNNEL_PRESETS.map((p) => (
+                <button
+                  key={p.days}
+                  type="button"
+                  onClick={() => setFunnelPreset(p.days)}
+                  className="px-2.5 py-1.5 text-xs font-medium bg-background hover:bg-muted border-r last:border-r-0 border-border transition-colors">
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
-          <p className="font-medium text-foreground">Backend API hozircha yo&apos;q</p>
-          <p className="mt-1">
-            Bu funnel uchun mahsulot ko&apos;rish (view) va savatga qo&apos;shish (add-to-cart) hodisalarini
-            qayd qiluvchi hech qanday jadval yoki modul serverda mavjud emas — faqat yakuniy buyurtmalar
-            saqlanadi. Funnel ko&apos;rsatish uchun avval backendda event-tracking (masalan
-            &nbsp;<code className="rounded bg-muted px-1">product_view_events</code> /{' '}
-            <code className="rounded bg-muted px-1">cart_add_events</code>) qo&apos;shish kerak — soxta
-            raqamlar bilan to&apos;ldirish o&apos;rniga bu yerda ochiq belgilab qo&apos;yildi.
-          </p>
-        </div>
+
+        {funnelQ.isLoading ? (
+          <div className="h-24 flex items-center justify-center text-muted-foreground text-sm">Yuklanmoqda…</div>
+        ) : funnelQ.isError ? (
+          <div className="h-24 flex items-center justify-center text-destructive text-sm">
+            {extractErrorMessage(funnelQ.error)} —{' '}
+            <button className="underline ml-1" onClick={() => funnelQ.refetch()}>qayta urinish</button>
+          </div>
+        ) : !funnelQ.data || (funnelQ.data.productViews === 0 && funnelQ.data.addToCart === 0 && funnelQ.data.orders === 0) ? (
+          <div className="h-24 flex items-center justify-center text-muted-foreground text-sm">
+            Tanlangan davr uchun ma&apos;lumot yo&apos;q
+          </div>
+        ) : (
+          (() => {
+            const { productViews, addToCart, orders } = funnelQ.data;
+            const stages = [
+              { label: "Ko'rilgan", value: productViews },
+              { label: 'Savatga qo\'shilgan', value: addToCart },
+              { label: 'Buyurtma qilingan', value: orders },
+            ];
+            return (
+              <>
+                <div className="flex items-stretch gap-2 overflow-x-auto pb-1">
+                  {stages.map((stage, i) => (
+                    <div key={stage.label} className="flex items-stretch gap-2 shrink-0">
+                      <div className="min-w-[140px] rounded-xl border border-border bg-muted/20 px-4 py-3 text-center">
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{stage.label}</p>
+                        <p className="mt-1 text-2xl font-bold text-foreground">{fmt(stage.value)}</p>
+                      </div>
+                      {i < stages.length - 1 && (
+                        <div className="flex flex-col items-center justify-center px-1 text-xs shrink-0">
+                          <ChevronRight className="size-4 text-primary" />
+                          <span className="font-semibold text-primary whitespace-nowrap">
+                            {pct(stages[i + 1].value, stage.value)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Umumiy konversiya (ko&apos;rilgan → buyurtma): <span className="font-semibold text-foreground">{pct(orders, productViews)}</span>
+                </p>
+              </>
+            );
+          })()
+        )}
       </Card>
     </div>
   );
