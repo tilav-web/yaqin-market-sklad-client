@@ -5,6 +5,7 @@ import { Bell, ExternalLink, Search, Send, ShieldCheck, ShieldOff, UserCheck, Us
 import { useRouter } from 'next/navigation';
 import { useReducer, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { NotifComposeForm } from '@/components/admin/notif-compose-form';
 import { PageHeader } from '@/components/admin/page-header';
 import { Pagination } from '@/components/admin/pagination';
@@ -212,6 +213,9 @@ export default function UsersAdminPage() {
   const router = useRouter();
   const setNotifTarget = useAdminNotifStore((s) => s.setTarget);
   const [state, dispatch] = useReducer(usersReducer, USERS_INIT);
+  const [adminAction, setAdminAction] = useState<{ user: AdminUser; nextIsAdmin: boolean } | null>(null);
+  const [adminReason, setAdminReason] = useState('');
+  const [adminErr, setAdminErr] = useState('');
 
   const usersQuery = useQuery({
     queryKey: ['admin', 'users', state.submitted, state.roleFilter, state.page],
@@ -235,10 +239,19 @@ export default function UsersAdminPage() {
 
   const setAdmin = useMutation({
     mutationFn: async ({ id, isAdmin }: { id: string; isAdmin: boolean }) => {
+      // NB: the backend DTO for this endpoint is currently `{ isAdmin: boolean }`
+      // only — it does not accept a reason/note field yet (see report). The
+      // reason captured below is enforced client-side as a confirmation step
+      // but isn't persisted; adding an audit-note column/DTO field on the
+      // server would be a good follow-up.
       await api.patch(`/admin/users/${id}/admin`, { isAdmin });
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
-    onError: (e) => alert(extractErrorMessage(e)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+      setAdminAction(null);
+      setAdminReason('');
+    },
+    onError: (e) => setAdminErr(extractErrorMessage(e)),
   });
 
   const users = usersQuery.data?.items ?? [];
@@ -384,10 +397,7 @@ export default function UsersAdminPage() {
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end gap-1.5">
                     <Button variant="ghost" size="sm" disabled={setAdmin.isPending}
-                      onClick={() => {
-                        if (confirm(`${u.name || u.phone} uchun admin huquqini ${u.isAdmin ? 'olib tashlaysizmi' : 'beriladimi'}?`))
-                          setAdmin.mutate({ id: u.id, isAdmin: !u.isAdmin });
-                      }}>
+                      onClick={() => { setAdminErr(''); setAdminReason(''); setAdminAction({ user: u, nextIsAdmin: !u.isAdmin }); }}>
                       {u.isAdmin ? <ShieldOff className="size-4" /> : <ShieldCheck className="size-4" />}
                       {u.isAdmin ? 'Admindan olish' : 'Admin qilish'}
                     </Button>
@@ -420,6 +430,47 @@ export default function UsersAdminPage() {
           onClose={() => dispatch({ type: 'CLOSE_MODAL' })}
         />
       )}
+
+      <ConfirmDialog
+        open={!!adminAction}
+        title={adminAction?.nextIsAdmin ? 'Admin huquqini berish' : 'Admin huquqini olib tashlash'}
+        destructive={!!adminAction?.nextIsAdmin}
+        description={adminAction && (
+          <div className="space-y-1">
+            <p>
+              Foydalanuvchi: <span className="font-medium text-foreground">{adminAction.user.name || adminAction.user.phone}</span>
+              {' '}({adminAction.user.phone})
+            </p>
+            <p className="mt-2 text-destructive">
+              {adminAction.nextIsAdmin
+                ? "Bu foydalanuvchi butun admin panelga — moliyaviy amallar, foydalanuvchilarni boshqarish, boshqa adminlarni tayinlash — to'liq kirish huquqiga ega bo'ladi."
+                : 'Bu foydalanuvchi admin panelga endi kira olmaydi.'}
+            </p>
+          </div>
+        )}
+        confirmLabel={adminAction?.nextIsAdmin ? 'Ha, admin qilish' : 'Ha, olib tashlash'}
+        confirmDisabled={!adminReason.trim()}
+        pending={setAdmin.isPending}
+        error={adminErr}
+        onCancel={() => { setAdminAction(null); setAdminErr(''); }}
+        onConfirm={() => {
+          if (!adminAction || !adminReason.trim()) return;
+          setAdmin.mutate({ id: adminAction.user.id, isAdmin: adminAction.nextIsAdmin });
+        }}>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+          Sabab (ichki eslatma) <span className="text-destructive">*</span>
+        </label>
+        <textarea
+          value={adminReason}
+          onChange={(e) => setAdminReason(e.target.value)}
+          placeholder="Nega bu o'zgarish qilinmoqda…"
+          rows={2}
+          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+        />
+        <p className="mt-1 text-[0.7rem] text-muted-foreground">
+          Hozircha backend bu sababni saqlamaydi (audit-log maydoni yo&apos;q) — faqat admin o&apos;zi bosishdan oldin sababni yozib qo&apos;yishi shart.
+        </p>
+      </ConfirmDialog>
     </div>
   );
 }
