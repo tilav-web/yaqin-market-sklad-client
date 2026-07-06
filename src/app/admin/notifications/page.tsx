@@ -5,12 +5,15 @@ import { Bell, ChevronDown, ChevronUp, Edit2, Plus, Search, Send, Trash2, Users,
 import dynamic from 'next/dynamic';
 import { Suspense, useCallback, useEffect, useReducer, useRef, useState } from 'react';
 
+import { NotifComposeForm } from '@/components/admin/notif-compose-form';
 import { PageHeader } from '@/components/admin/page-header';
 import { Pagination } from '@/components/admin/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+import { stripHtml, uploadImageFile } from '@/lib/notif-utils';
+import { sanitizeHtml } from '@/lib/sanitize';
 import { NotifAudience, useAdminNotifStore } from '@/stores/admin-notif';
 
 const RichTextEditor = dynamic(
@@ -25,15 +28,6 @@ interface UsersPage { items: AdminUser[]; total: number }
 
 const PAGE_SIZE = 15;
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
-
-function stripHtml(html: string) {
-  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-}
-async function uploadImageFile(file: File) {
-  const form = new FormData();
-  form.append('file', file);
-  return (await api.post<{ url: string }>('/uploads/image', form)).data.url;
-}
 
 /* ─── Audience reducer ─── */
 interface AudienceState {
@@ -190,7 +184,7 @@ function TemplateManager({
                 <p className="font-semibold">{t.title}</p>
                 {t.richBody
                   ? <div className="prose prose-sm max-w-none [&_h1]:text-base [&_h1]:font-bold [&_h2]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_a]:text-primary [&_img]:rounded [&_img]:max-h-32"
-                      dangerouslySetInnerHTML={{ __html: t.richBody }} />
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(t.richBody) }} />
                   : <p className="text-muted-foreground">{t.body}</p>}
                 {t.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -519,52 +513,18 @@ function NotificationsInner() {
           <Card className="p-4 space-y-4 sticky top-6">
             <p className="text-sm font-semibold">Xabar matni</p>
 
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Sarlavha</label>
-              <Input value={draft.title} onChange={(e) => patchDraft({ title: e.target.value })}
-                placeholder="Aksiya boshlandi!" maxLength={128} />
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Matn</label>
-              <RichTextEditor value={draft.richBody} onChange={(v) => patchDraft({ richBody: v })} />
-              {draft.richBody && (
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  <span className="font-medium">Preview:</span> {stripHtml(draft.richBody).slice(0, 80)}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Rasm (ixtiyoriy)</label>
-              <input type="file" accept="image/jpeg,image/png,image/webp"
-                onChange={async (e) => {
-                  const f = e.target.files?.[0]; if (!f) return;
-                  setImgLoading(true); patchDraft({ imageUrl: '' });
-                  try { patchDraft({ imageUrl: await uploadImageFile(f) }); } catch { /* ignore */ }
-                  finally { setImgLoading(false); }
-                }}
-                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm file:mr-3 file:rounded file:border-0 file:bg-primary file:px-3 file:py-1 file:text-xs file:font-medium file:text-primary-foreground" />
-              {imgLoading && <p className="mt-1 text-xs text-muted-foreground">Yuklanmoqda…</p>}
-              {draft.imageUrl && !imgLoading && <ImgPreview url={draft.imageUrl} onRemove={() => patchDraft({ imageUrl: '' })} />}
-            </div>
-
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Bosganda ochiluvchi sahifa</label>
-              <select value={draft.deepLink} onChange={(e) => patchDraft({ deepLink: e.target.value })}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                {[
-                  { value: '/notifications', label: 'Bildirishnomalar' },
-                  { value: '/', label: 'Bosh sahifa' },
-                  { value: '/orders', label: 'Buyurtmalar' },
-                  { value: '/(tabs)/map', label: 'Xarita' },
-                  { value: '/(tabs)/search', label: 'Qidiruv' },
-                  { value: '/(tabs)/carts', label: 'Savat' },
-                  { value: '/shops', label: "Do'konlar" },
-                  { value: '/seller-application', label: 'Sotuvchi arizasi' },
-                ].map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-              </select>
-            </div>
+            <NotifComposeForm
+              title={draft.title}
+              onTitleChange={(v) => patchDraft({ title: v })}
+              richBody={draft.richBody}
+              onRichBodyChange={(v) => patchDraft({ richBody: v })}
+              imageUrl={draft.imageUrl}
+              onImageUrlChange={(v) => patchDraft({ imageUrl: v })}
+              imgLoading={imgLoading}
+              onImgLoadingChange={setImgLoading}
+              deepLink={draft.deepLink}
+              onDeepLinkChange={(v) => patchDraft({ deepLink: v })}
+            />
 
             {result && (
               <p className={`text-sm font-medium ${result.ok ? 'text-green-600' : 'text-destructive'}`}>{result.msg}</p>

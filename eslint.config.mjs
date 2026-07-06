@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // This project's actual static-export output dir (see next.config.ts /
+    // .gitignore) — wasn't covered by the defaults above, so `npm run lint`
+    // was scanning generated/minified chunks after every `npm run build`.
+    "dist/**",
   ]),
 ]);
 

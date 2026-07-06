@@ -2,22 +2,18 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, ExternalLink, Search, Send, ShieldCheck, ShieldOff, UserCheck, UserX, X } from 'lucide-react';
-import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useReducer, useState } from 'react';
 
+import { NotifComposeForm } from '@/components/admin/notif-compose-form';
 import { PageHeader } from '@/components/admin/page-header';
 import { Pagination } from '@/components/admin/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+import { stripHtml } from '@/lib/notif-utils';
 import { useAdminNotifStore } from '@/stores/admin-notif';
-
-const RichTextEditor = dynamic(
-  () => import('@/components/admin/rich-text-editor').then((m) => ({ default: m.RichTextEditor })),
-  { ssr: false, loading: () => <div className="min-h-[120px] animate-pulse rounded-lg border border-border bg-muted/30" /> },
-);
 
 /* ─── Types ─── */
 interface AdminUser {
@@ -35,7 +31,6 @@ interface Template { id: string; name: string; title: string; body: string; rich
 type RoleFilter = 'all' | 'customers' | 'sellers' | 'admins';
 
 const PAGE_SIZE = 20;
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 /* ─── Reducer ─── */
 interface UsersState {
@@ -97,17 +92,6 @@ function usersReducer(state: UsersState, action: UsersAction): UsersState {
     default:
       return state;
   }
-}
-
-/* ─── Helpers ─── */
-function stripHtml(html: string) {
-  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-}
-async function uploadImageFile(file: File) {
-  const form = new FormData();
-  form.append('file', file);
-  const res = await api.post<{ url: string }>('/uploads/image', form);
-  return res.data.url;
 }
 
 const ROLE_TO_AUDIENCE: Partial<Record<RoleFilter, 'all' | 'sellers' | 'customers'>> = {
@@ -179,63 +163,21 @@ function SendNotifModal({
         </div>
 
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-          {templates.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Shablonlar</p>
-              <div className="flex flex-wrap gap-2">
-                {templates.map((t) => (
-                  <button key={t.id} type="button" onClick={() => applyTemplate(t)}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors
-                      ${selectedTplId === t.id ? 'bg-primary text-primary-foreground border-primary' : 'border-border bg-background hover:bg-muted'}`}>
-                    {t.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Sarlavha</label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Aksiya boshlandi!" maxLength={128} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Matn</label>
-            <RichTextEditor value={richBody} onChange={setRichBody} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Rasm (ixtiyoriy)</label>
-            <input type="file" accept="image/jpeg,image/png,image/webp"
-              onChange={async (e) => {
-                const f = e.target.files?.[0]; if (!f) return;
-                setImgLoading(true); setImageUrl('');
-                try { setImageUrl(await uploadImageFile(f)); } catch { /* ignore */ }
-                finally { setImgLoading(false); }
-              }}
-              className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm file:mr-3 file:rounded file:border-0 file:bg-primary file:px-3 file:py-1 file:text-xs file:font-medium file:text-primary-foreground" />
-            {imgLoading && <p className="mt-1 text-xs text-muted-foreground">Yuklanmoqda…</p>}
-            {imageUrl && !imgLoading && (
-              <div className="mt-2 flex items-center gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`${API_URL}${imageUrl}`} alt="" className="h-12 w-12 rounded object-cover border border-border" />
-                <span className="text-xs font-medium text-green-600">Yuklandi ✓</span>
-                <button type="button" onClick={() => setImageUrl('')} className="ml-auto text-xs text-destructive">O'chirish</button>
-              </div>
-            )}
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Bosganda ochiluvchi sahifa</label>
-            <select value={deepLink} onChange={(e) => setDeepLink(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-              {[
-                { value: '/notifications', label: 'Bildirishnomalar' },
-                { value: '/', label: 'Bosh sahifa' },
-                { value: '/orders', label: 'Buyurtmalar' },
-                { value: '/(tabs)/map', label: 'Xarita' },
-                { value: '/(tabs)/search', label: 'Qidiruv' },
-                { value: '/(tabs)/carts', label: 'Savat' },
-              ].map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}
-            </select>
-          </div>
+          <NotifComposeForm
+            title={title}
+            onTitleChange={setTitle}
+            richBody={richBody}
+            onRichBodyChange={setRichBody}
+            imageUrl={imageUrl}
+            onImageUrlChange={setImageUrl}
+            imgLoading={imgLoading}
+            onImgLoadingChange={setImgLoading}
+            deepLink={deepLink}
+            onDeepLinkChange={setDeepLink}
+            templates={templates}
+            selectedTplId={selectedTplId}
+            onApplyTemplate={applyTemplate}
+          />
 
           {result && (
             <p className={`rounded-lg px-3 py-2 text-sm font-medium border ${result.ok ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-destructive border-red-200'}`}>
