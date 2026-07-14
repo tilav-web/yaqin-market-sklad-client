@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp, List, MapPin, MessageSquareWarning, Power, PowerOff, Search, Star } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, List, MapPin, MessageSquareWarning, Power, PowerOff, Search, Star } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Fragment, useState } from 'react';
 
@@ -13,7 +13,7 @@ import type { ShopPin } from '@/components/admin/shops-map';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
-import { api, extractErrorMessage } from '@/lib/api';
+import { api, downloadFile, extractErrorMessage } from '@/lib/api';
 
 const ShopsMap = dynamic(() => import('@/components/admin/shops-map'), {
   ssr: false,
@@ -142,6 +142,12 @@ export default function ShopsAdminPage() {
   const shops = shopsQuery.data?.items ?? [];
   const total = shopsQuery.data?.total ?? 0;
 
+  const [exportErr, setExportErr] = useState('');
+  const exportXlsx = useMutation({
+    mutationFn: () => downloadFile('/admin/shops/export', 'dokonlar.xlsx', { search: submitted || undefined }),
+    onError: (e) => setExportErr(extractErrorMessage(e)),
+  });
+
   return (
     <div className="space-y-6 p-6">
       <PageHeader
@@ -149,24 +155,32 @@ export default function ShopsAdminPage() {
         title="Do'konlar"
         description="Platformadagi barcha do'konlar — qidirish va moderatsiya."
         actions={
-          <div className="flex rounded-lg border border-border overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setView('table')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors border-r border-border
-                ${view === 'table' ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}>
-              <List className="size-3.5" /> Ro&apos;yxat
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('map')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors
-                ${view === 'map' ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}>
-              <MapPin className="size-3.5" /> Xarita
-            </button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={exportXlsx.isPending} onClick={() => { setExportErr(''); exportXlsx.mutate(); }}>
+              <Download className="size-3.5" /> {exportXlsx.isPending ? 'Yuklanmoqda…' : 'Eksport'}
+            </Button>
+            <div className="flex rounded-lg border border-border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setView('table')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors border-r border-border
+                  ${view === 'table' ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}>
+                <List className="size-3.5" /> Ro&apos;yxat
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('map')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors
+                  ${view === 'map' ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}>
+                <MapPin className="size-3.5" /> Xarita
+              </button>
+            </div>
           </div>
         }
       />
+      {exportErr && (
+        <p className="rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{exportErr}</p>
+      )}
 
       <form
         className="flex max-w-md items-center gap-2"

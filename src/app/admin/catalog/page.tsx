@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BadgeCheck, ChevronLeft, ChevronRight, Eye, Package, Pencil, Plus, Search, Store, Upload, X } from 'lucide-react';
+import { BadgeCheck, ChevronLeft, ChevronRight, Download, Eye, Package, Pencil, Plus, Search, Store, Upload, X } from 'lucide-react';
 import { useReducer, useState } from 'react';
 
 import { CatalogImportModal } from '@/components/admin/catalog-import-modal';
@@ -9,7 +9,7 @@ import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
-import { api, extractErrorMessage } from '@/lib/api';
+import { api, downloadFile, extractErrorMessage } from '@/lib/api';
 
 interface CatalogUsageRow {
   variantId: string;
@@ -168,6 +168,15 @@ export default function CatalogPage() {
   const [verifyErr, setVerifyErr] = useState('');
   const [usageProduct, setUsageProduct] = useState<GlobalProduct | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [exportErr, setExportErr] = useState('');
+  const exportXlsx = useMutation({
+    mutationFn: () =>
+      downloadFile('/admin/catalog/export', 'katalog.xlsx', {
+        q: search || undefined,
+        categoryId: filterCat || undefined,
+      }),
+    onError: (e) => setExportErr(extractErrorMessage(e)),
+  });
 
   const categoriesQuery = useQuery<Category[]>({
     queryKey: ['admin', 'categories', 'active'],
@@ -253,6 +262,9 @@ export default function CatalogPage() {
         description="Barcha do'konlar uchun umumiy mahsulot bazasi"
         actions={
           <div className="flex gap-2">
+            <Button variant="outline" disabled={exportXlsx.isPending} onClick={() => { setExportErr(''); exportXlsx.mutate(); }}>
+              <Download className="w-4 h-4 mr-2" />{exportXlsx.isPending ? 'Yuklanmoqda…' : 'Eksport'}
+            </Button>
             <Button variant="outline" onClick={() => setImportOpen(true)}>
               <Upload className="w-4 h-4 mr-2" />Ommaviy import
             </Button>
@@ -262,6 +274,9 @@ export default function CatalogPage() {
           </div>
         }
       />
+      {exportErr && (
+        <p className="rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{exportErr}</p>
+      )}
 
       {verifyErr && (
         <p className="rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{verifyErr}</p>
