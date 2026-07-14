@@ -1,13 +1,13 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Phone } from 'lucide-react';
-import { useState } from 'react';
+import { Check, Phone, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
 
 interface Inquiry {
@@ -19,9 +19,13 @@ interface Inquiry {
   createdAt: string;
 }
 
+type ReadFilter = 'all' | 'unread' | 'read';
+
 export default function InquiriesPage() {
   const qc = useQueryClient();
   const [markReadErr, setMarkReadErr] = useState('');
+  const [search, setSearch] = useState('');
+  const [readFilter, setReadFilter] = useState<ReadFilter>('all');
 
   const inquiriesQuery = useQuery({
     queryKey: ['admin', 'inquiries'],
@@ -39,8 +43,22 @@ export default function InquiriesPage() {
     onError: (e) => setMarkReadErr(extractErrorMessage(e)),
   });
 
-  const inquiries = inquiriesQuery.data ?? [];
-  const unread = inquiries.filter((i) => !i.isRead).length;
+  const all = inquiriesQuery.data ?? [];
+  const unread = all.filter((i) => !i.isRead).length;
+
+  const inquiries = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return all.filter((i) => {
+      if (readFilter === 'unread' && i.isRead) return false;
+      if (readFilter === 'read' && !i.isRead) return false;
+      if (!q) return true;
+      return (
+        i.name.toLowerCase().includes(q) ||
+        i.phone.toLowerCase().includes(q) ||
+        i.message.toLowerCase().includes(q)
+      );
+    });
+  }, [all, search, readFilter]);
 
   return (
     <div className="space-y-6 p-6">
@@ -54,6 +72,34 @@ export default function InquiriesPage() {
         }
       />
 
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-72">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Ism, telefon yoki matn bo'yicha qidirish…"
+            className="pl-9"
+          />
+        </div>
+        <div className="flex rounded-lg border border-border overflow-hidden">
+          {([
+            { key: 'all', label: 'Barchasi' },
+            { key: 'unread', label: "O'qilmagan" },
+            { key: 'read', label: "O'qilgan" },
+          ] as const).map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setReadFilter(f.key)}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors border-r last:border-r-0 border-border
+                ${readFilter === f.key ? 'bg-primary text-primary-foreground' : 'bg-background hover:bg-muted'}`}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {markReadErr && (
         <p className="rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{markReadErr}</p>
       )}
@@ -66,7 +112,9 @@ export default function InquiriesPage() {
           <button className="underline" onClick={() => inquiriesQuery.refetch()}>qayta urinish</button>
         </Card>
       ) : inquiries.length === 0 ? (
-        <Card className="py-16 text-center text-sm text-muted-foreground">Hozircha murojaat yo&apos;q</Card>
+        <Card className="py-16 text-center text-sm text-muted-foreground">
+          {all.length === 0 ? "Hozircha murojaat yo'q" : 'Filtrga mos murojaat topilmadi'}
+        </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {inquiries.map((i) => (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BadgeCheck, ChevronLeft, ChevronRight, Package, Pencil, Plus, Search } from 'lucide-react';
+import { BadgeCheck, ChevronLeft, ChevronRight, Eye, Package, Pencil, Plus, Search, Store, X } from 'lucide-react';
 import { useReducer, useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
@@ -9,6 +9,75 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+
+interface CatalogUsageRow {
+  variantId: string;
+  shopId: string;
+  shopName: string;
+  price: number;
+  discountPrice: number | null;
+  stock: number;
+}
+
+function UsageModal({ product, onClose }: { product: GlobalProduct; onClose: () => void }) {
+  const usageQ = useQuery<CatalogUsageRow[]>({
+    queryKey: ['admin', 'catalog', 'usage', product.id],
+    queryFn: async () => (await api.get(`/admin/catalog/${product.id}/usage`)).data,
+  });
+  const rows = usageQ.data ?? [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <Card className="max-h-[80vh] w-full max-w-lg overflow-y-auto p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold">{product.name}</h2>
+            <p className="text-xs text-muted-foreground">Bu mahsulotni sotayotgan do&apos;konlar</p>
+          </div>
+          <button className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors" onClick={onClose}>
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {usageQ.isLoading ? (
+          <p className="mt-4 text-sm text-muted-foreground">Yuklanmoqda…</p>
+        ) : usageQ.isError ? (
+          <p className="mt-4 text-sm text-destructive">
+            {extractErrorMessage(usageQ.error)} —{' '}
+            <button className="underline" onClick={() => usageQ.refetch()}>qayta urinish</button>
+          </p>
+        ) : rows.length === 0 ? (
+          <p className="mt-4 text-sm text-muted-foreground">Hech qaysi do&apos;kon bu mahsulotni sotmayapti.</p>
+        ) : (
+          <div className="mt-4 divide-y divide-border">
+            {rows.map((r) => (
+              <div key={r.variantId} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                <span className="flex min-w-0 items-center gap-1.5 truncate">
+                  <Store className="size-3.5 shrink-0 text-muted-foreground" />
+                  {r.shopName}
+                </span>
+                <div className="shrink-0 text-right">
+                  <p className="font-medium text-foreground">
+                    {r.discountPrice ? (
+                      <>
+                        <span className="text-destructive">{r.discountPrice.toLocaleString()}</span>{' '}
+                        <span className="text-xs text-muted-foreground line-through">{r.price.toLocaleString()}</span>
+                      </>
+                    ) : (
+                      r.price.toLocaleString()
+                    )}
+                    {" so'm"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Qoldiq: {r.stock}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
 
 interface GlobalProduct {
   id: string;
@@ -96,6 +165,7 @@ export default function CatalogPage() {
   const [form, dispatch] = useReducer(formReducer, FORM_INIT);
   const [formError, setFormError] = useState('');
   const [verifyErr, setVerifyErr] = useState('');
+  const [usageProduct, setUsageProduct] = useState<GlobalProduct | null>(null);
 
   const categoriesQuery = useQuery<Category[]>({
     queryKey: ['admin', 'categories', 'active'],
@@ -259,7 +329,12 @@ export default function CatalogPage() {
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0 flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{p.usageCount} do'kon</span>
+                    <button
+                      title="Do'konlar bo'yicha ko'rish"
+                      onClick={() => setUsageProduct(p)}
+                      className="flex items-center gap-1 text-xs text-muted-foreground rounded px-1.5 py-1 hover:bg-muted transition-colors">
+                      <Eye className="w-3.5 h-3.5" /> {p.usageCount} do&apos;kon
+                    </button>
                     <button
                       title={p.isVerified ? 'Tasdiqlandi — bekor qilish' : 'Tasdiqlash'}
                       onClick={() => toggleVerify.mutate({ id: p.id, isVerified: !p.isVerified })}
@@ -410,6 +485,8 @@ export default function CatalogPage() {
           </Card>
         </div>
       )}
+
+      {usageProduct && <UsageModal product={usageProduct} onClose={() => setUsageProduct(null)} />}
     </div>
   );
 }

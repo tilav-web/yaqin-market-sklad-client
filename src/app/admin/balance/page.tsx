@@ -1,12 +1,13 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Search, X } from 'lucide-react';
+import { Pencil, Search, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
 
@@ -115,6 +116,34 @@ export default function AdminBalancePage() {
     else forceRefund.mutate(pendingAction.tx.id);
   };
 
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [adjustAmount, setAdjustAmount] = useState('');
+  const [adjustDesc, setAdjustDesc] = useState('');
+
+  const adjust = useMutation({
+    mutationFn: async () => {
+      await api.post(`/admin/balance/sellers/${sellerId}/adjust`, {
+        amount: Number(adjustAmount),
+        description: adjustDesc.trim(),
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'balance', sellerId] });
+      qc.invalidateQueries({ queryKey: ['admin', 'txs', sellerId] });
+      setAdjustOpen(false);
+      setAdjustAmount('');
+      setAdjustDesc('');
+    },
+  });
+
+  const adjustAmountValid = adjustAmount.trim() !== '' && Number.isFinite(Number(adjustAmount)) && Number(adjustAmount) !== 0;
+  const openAdjustDialog = () => {
+    adjust.reset();
+    setAdjustAmount('');
+    setAdjustDesc('');
+    setAdjustOpen(true);
+  };
+
   return (
     <div className="p-6">
       <PageHeader title="Balanslar" description="Sotuvchi bo'yicha balans va tranzaksiyalar" />
@@ -212,6 +241,12 @@ export default function AdminBalancePage() {
             </Card>
           </div>
 
+          <div className="mt-4 flex justify-end">
+            <Button variant="outline" size="sm" onClick={openAdjustDialog}>
+              <Pencil className="size-3.5" /> Balansni qo&apos;lda tuzatish
+            </Button>
+          </div>
+
           <h3 className="mt-6 text-sm font-semibold">Tranzaksiyalar</h3>
           {txQ.isLoading && <p className="mt-2 text-sm text-muted-foreground">Yuklanmoqda…</p>}
           {txQ.isError && (
@@ -282,6 +317,48 @@ export default function AdminBalancePage() {
         onConfirm={confirmAction}
         onCancel={() => { setPendingAction(null); setActionErr(''); }}
       />
+
+      <ConfirmDialog
+        open={adjustOpen}
+        title="Balansni qo'lda tuzatish"
+        description={
+          <p>
+            Sotuvchi: <span className="font-medium text-foreground">{selectedSeller?.name || sellerId}</span>.
+            Musbat summa — qo&apos;shadi, manfiy summa — ayiradi. Bu haqiqiy pul operatsiyasi — ehtiyot bo&apos;ling.
+          </p>
+        }
+        confirmLabel="Tasdiqlash"
+        confirmDisabled={!adjustAmountValid || !adjustDesc.trim()}
+        pending={adjust.isPending}
+        error={adjust.isError ? extractErrorMessage(adjust.error) : ''}
+        onConfirm={() => adjust.mutate()}
+        onCancel={() => setAdjustOpen(false)}>
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Summa (so&apos;m) <span className="text-destructive">*</span>
+            </label>
+            <Input
+              type="number"
+              value={adjustAmount}
+              onChange={(e) => setAdjustAmount(e.target.value)}
+              placeholder="masalan: -50000 yoki 100000"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Sabab <span className="text-destructive">*</span>
+            </label>
+            <textarea
+              value={adjustDesc}
+              onChange={(e) => setAdjustDesc(e.target.value)}
+              rows={2}
+              placeholder="Nega bu tuzatish qilinmoqda…"
+              className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+            />
+          </div>
+        </div>
+      </ConfirmDialog>
     </div>
   );
 }

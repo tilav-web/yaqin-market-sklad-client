@@ -1,14 +1,14 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Edit2, Plus, Trash2 } from 'lucide-react';
+import { CalendarPlus, Edit2, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
 
 interface PrimePlan {
@@ -31,6 +31,7 @@ interface Subscription {
   endDate: string;
   isActive: boolean;
   plan: Pick<PrimePlan, 'name'>;
+  seller: { id: string; name: string | null; phone: string } | null;
 }
 
 const EMPTY_FORM = { name: '', monthlyPrice: '', yearlyPrice: '', commissionRate: '', description: '', sortOrder: '0' };
@@ -90,6 +91,23 @@ export default function AdminPrimePage() {
       setPendingDelete(null);
     },
   });
+
+  const [extendingSub, setExtendingSub] = useState<Subscription | null>(null);
+  const [extendDays, setExtendDays] = useState('7');
+
+  const extend = useMutation({
+    mutationFn: async () => {
+      if (!extendingSub) return;
+      await api.put(`/admin/prime/subscriptions/${extendingSub.id}/extend`, { days: Number(extendDays) });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'prime', 'subs'] });
+      setExtendingSub(null);
+      setExtendDays('7');
+    },
+  });
+
+  const extendDaysValid = /^\d+$/.test(extendDays) && Number(extendDays) >= 1 && Number(extendDays) <= 365;
 
   const startEdit = (p: PrimePlan) => {
     setEditing(p.id);
@@ -227,7 +245,9 @@ export default function AdminPrimePage() {
               <Card key={s.id} className="flex items-center gap-4 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">{s.plan?.name ?? s.planId}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{s.sellerId}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {s.seller ? (s.seller.name || s.seller.phone) : s.sellerId}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm">{s.startDate} — {s.endDate}</p>
@@ -236,6 +256,13 @@ export default function AdminPrimePage() {
                   </p>
                 </div>
                 <Badge variant={s.isActive ? 'success' : 'neutral'}>{s.isActive ? 'Faol' : 'Tugagan'}</Badge>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  title="Muddatni uzaytirish"
+                  onClick={() => { extend.reset(); setExtendDays('7'); setExtendingSub(s); }}>
+                  <CalendarPlus className="size-4" />
+                </Button>
               </Card>
             ))}
             {!subsQ.isLoading && (subsQ.data ?? []).length === 0 && (
@@ -264,6 +291,36 @@ export default function AdminPrimePage() {
         onConfirm={() => pendingDelete && del.mutate(pendingDelete.id)}
         onCancel={() => setPendingDelete(null)}
       />
+
+      <ConfirmDialog
+        open={!!extendingSub}
+        title="Obuna muddatini uzaytirish"
+        destructive={false}
+        description={extendingSub && (
+          <p>
+            Sotuvchi: <span className="font-medium text-foreground">
+              {extendingSub.seller ? (extendingSub.seller.name || extendingSub.seller.phone) : extendingSub.sellerId}
+            </span>
+            {' '}— joriy tugash sanasi: <span className="font-medium text-foreground">{extendingSub.endDate}</span>
+          </p>
+        )}
+        confirmLabel="Uzaytirish"
+        confirmDisabled={!extendDaysValid}
+        pending={extend.isPending}
+        error={extend.isError ? extractErrorMessage(extend.error) : ''}
+        onConfirm={() => extend.mutate()}
+        onCancel={() => setExtendingSub(null)}>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+          Necha kunga uzaytirish <span className="text-destructive">*</span>
+        </label>
+        <Input
+          type="number"
+          min={1}
+          max={365}
+          value={extendDays}
+          onChange={(e) => setExtendDays(e.target.value)}
+        />
+      </ConfirmDialog>
     </div>
   );
 }

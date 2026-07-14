@@ -124,15 +124,17 @@ export default function ShopsAdminPage() {
 
   const [actionErr, setActionErr] = useState('');
   const [pendingToggle, setPendingToggle] = useState<AdminShop | null>(null);
+  const [toggleReason, setToggleReason] = useState('');
 
   const setActive = useMutation({
-    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      await api.patch(`/admin/shops/${id}/active`, { isActive });
+    mutationFn: async ({ id, isActive, reason }: { id: string; isActive: boolean; reason?: string }) => {
+      await api.patch(`/admin/shops/${id}/active`, { isActive, reason: reason || undefined });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'shops'] });
       setActionErr('');
       setPendingToggle(null);
+      setToggleReason('');
     },
     onError: (e) => setActionErr(extractErrorMessage(e)),
   });
@@ -288,7 +290,7 @@ export default function ShopsAdminPage() {
                           variant={s.isActive ? 'ghost' : 'outline'}
                           size="sm"
                           disabled={setActive.isPending}
-                          onClick={() => { setActionErr(''); setPendingToggle(s); }}>
+                          onClick={() => { setActionErr(''); setToggleReason(''); setPendingToggle(s); }}>
                           {s.isActive ? (
                             <PowerOff className="size-4 text-destructive" />
                           ) : (
@@ -356,8 +358,20 @@ export default function ShopsAdminPage() {
         pending={setActive.isPending}
         error={actionErr}
         onCancel={() => setPendingToggle(null)}
-        onConfirm={() => pendingToggle && setActive.mutate({ id: pendingToggle.id, isActive: !pendingToggle.isActive })}
-      />
+        onConfirm={() => pendingToggle && setActive.mutate({
+          id: pendingToggle.id, isActive: !pendingToggle.isActive, reason: toggleReason.trim(),
+        })}>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+          Sabab (ixtiyoriy, ichki eslatma)
+        </label>
+        <textarea
+          value={toggleReason}
+          onChange={(e) => setToggleReason(e.target.value)}
+          placeholder="Nega bu o'zgarish qilinmoqda…"
+          rows={2}
+          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+        />
+      </ConfirmDialog>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Package, Phone, ShieldCheck, Store, User as UserIcon } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, BadgeCheck, Package, Pencil, Phone, ShieldCheck, Store, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
@@ -9,9 +9,186 @@ import { Suspense, useState } from 'react';
 import { PageHeader } from '@/components/admin/page-header';
 import { Pagination } from '@/components/admin/pagination';
 import { Badge } from '@/components/ui/badge';
-import { buttonVariants } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+
+interface SellerProfile {
+  fullName: string | null;
+  passportOrPinfl: string | null;
+  stir: string | null;
+  entityType: string | null;
+  bankCardNumber: string | null;
+  bankCardHolderName: string | null;
+  contractNumber: string | null;
+  contractDate: string | null;
+  verifiedAt: string | null;
+  adminNotes: string | null;
+}
+
+interface ProfileForm {
+  fullName: string;
+  passportOrPinfl: string;
+  stir: string;
+  entityType: string;
+  bankCardNumber: string;
+  bankCardHolderName: string;
+  contractNumber: string;
+  contractDate: string;
+  adminNotes: string;
+}
+
+const PROFILE_FIELDS: { k: keyof ProfileForm; label: string }[] = [
+  { k: 'fullName', label: 'To\'liq ism (FIO)' },
+  { k: 'passportOrPinfl', label: 'Pasport / PINFL' },
+  { k: 'stir', label: 'STIR / INN' },
+  { k: 'entityType', label: 'Yuridik shakl' },
+  { k: 'bankCardNumber', label: 'Karta raqami' },
+  { k: 'bankCardHolderName', label: 'Karta egasi' },
+  { k: 'contractNumber', label: 'Shartnoma raqami' },
+  { k: 'contractDate', label: 'Shartnoma sanasi' },
+];
+
+function formFromProfile(p: SellerProfile | null): ProfileForm {
+  return {
+    fullName: p?.fullName ?? '',
+    passportOrPinfl: p?.passportOrPinfl ?? '',
+    stir: p?.stir ?? '',
+    entityType: p?.entityType ?? '',
+    bankCardNumber: p?.bankCardNumber ?? '',
+    bankCardHolderName: p?.bankCardHolderName ?? '',
+    contractNumber: p?.contractNumber ?? '',
+    contractDate: p?.contractDate ?? '',
+    adminNotes: p?.adminNotes ?? '',
+  };
+}
+
+function SellerProfilePanel({ userId }: { userId: string }) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState<ProfileForm>(formFromProfile(null));
+  const [err, setErr] = useState('');
+
+  const profileQ = useQuery<SellerProfile | null>({
+    queryKey: ['admin', 'seller-profile', userId],
+    queryFn: async () => (await api.get(`/sellers/admin/profiles/${userId}`)).data,
+  });
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const body: Record<string, string> = {};
+      (Object.keys(form) as (keyof ProfileForm)[]).forEach((k) => {
+        if (form[k]) body[k] = form[k];
+      });
+      await api.put(`/sellers/admin/profiles/${userId}`, body);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'seller-profile', userId] });
+      setEditing(false);
+      setErr('');
+    },
+    onError: (e) => setErr(extractErrorMessage(e)),
+  });
+
+  const startEdit = () => {
+    setForm(formFromProfile(profileQ.data ?? null));
+    setErr('');
+    setEditing(true);
+  };
+
+  const p = profileQ.data;
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Store className="size-5 text-primary" />
+          <h2 className="text-sm font-semibold">Sotuvchi profili</h2>
+          {p?.verifiedAt && (
+            <Badge variant="success">
+              <BadgeCheck className="size-3" /> Tasdiqlangan
+            </Badge>
+          )}
+        </div>
+        {!editing && (
+          <Button variant="ghost" size="sm" onClick={startEdit}>
+            <Pencil className="size-4" /> Tahrirlash
+          </Button>
+        )}
+      </div>
+
+      {profileQ.isLoading ? (
+        <p className="mt-3 text-sm text-muted-foreground">Yuklanmoqda…</p>
+      ) : profileQ.isError ? (
+        <p className="mt-3 text-sm text-destructive">
+          {extractErrorMessage(profileQ.error)} —{' '}
+          <button className="underline" onClick={() => profileQ.refetch()}>qayta urinish</button>
+        </p>
+      ) : editing ? (
+        <div className="mt-3 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {PROFILE_FIELDS.map(({ k, label }) => (
+              <div key={k}>
+                <label className="mb-0.5 block text-xs font-medium text-muted-foreground">{label}</label>
+                <Input
+                  type={k === 'contractDate' ? 'date' : 'text'}
+                  value={form[k]}
+                  onChange={(e) => setForm((prev) => ({ ...prev, [k]: e.target.value }))}
+                />
+              </div>
+            ))}
+          </div>
+          <div>
+            <label className="mb-0.5 block text-xs font-medium text-muted-foreground">Admin izohi (ichki)</label>
+            <textarea
+              rows={2}
+              value={form.adminNotes}
+              onChange={(e) => setForm((prev) => ({ ...prev, adminNotes: e.target.value }))}
+              className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+            />
+          </div>
+          {err && <p className="text-xs text-destructive">{err}</p>}
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => { setEditing(false); setErr(''); }}>
+              Bekor qilish
+            </Button>
+            <Button size="sm" disabled={save.isPending} onClick={() => save.mutate()}>
+              {save.isPending ? 'Saqlanmoqda…' : 'Saqlash'}
+            </Button>
+          </div>
+        </div>
+      ) : !p || !p.fullName ? (
+        <p className="mt-3 text-sm text-muted-foreground">
+          Profil ma&apos;lumotlari hali to&apos;ldirilmagan. &quot;Tahrirlash&quot; orqali qo&apos;shing.
+        </p>
+      ) : (
+        <div className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+          <p><span className="text-muted-foreground">FIO:</span> {p.fullName || '—'}</p>
+          <p><span className="text-muted-foreground">Pasport/PINFL:</span> {p.passportOrPinfl || '—'}</p>
+          <p><span className="text-muted-foreground">STIR:</span> {p.stir || '—'}</p>
+          <p><span className="text-muted-foreground">Yuridik shakl:</span> {p.entityType || '—'}</p>
+          <p><span className="text-muted-foreground">Karta:</span> {p.bankCardNumber || '—'}</p>
+          <p><span className="text-muted-foreground">Karta egasi:</span> {p.bankCardHolderName || '—'}</p>
+          <p><span className="text-muted-foreground">Shartnoma №:</span> {p.contractNumber || '—'}</p>
+          <p><span className="text-muted-foreground">Shartnoma sanasi:</span> {p.contractDate || '—'}</p>
+          {p.adminNotes && (
+            <p className="sm:col-span-2">
+              <span className="text-muted-foreground">Admin izohi:</span> {p.adminNotes}
+            </p>
+          )}
+        </div>
+      )}
+
+      <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">
+        Balans va tranzaksiyalarni{' '}
+        <Link href="/admin/balance" className="inline-flex items-center gap-1 text-primary underline">
+          <ShieldCheck className="size-3.5" /> Balanslar
+        </Link>{' '}
+        sahifasida (ism/telefon orqali qidirib) ko&apos;ring.
+      </p>
+    </Card>
+  );
+}
 
 interface AdminUser {
   id: string;
@@ -220,21 +397,7 @@ function UserDetailInner() {
             )}
           </Card>
 
-          {user.isSellerApproved && (
-            <Card className="p-5">
-              <div className="flex items-center gap-2">
-                <Store className="size-5 text-primary" />
-                <h2 className="text-sm font-semibold">Sotuvchi</h2>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Bu foydalanuvchi tasdiqlangan sotuvchi. Balans va tranzaksiyalarni{' '}
-                <Link href="/admin/balance" className="inline-flex items-center gap-1 text-primary underline">
-                  <ShieldCheck className="size-3.5" /> Balanslar
-                </Link>{' '}
-                sahifasida (ism/telefon orqali qidirib) ko&apos;ring.
-              </p>
-            </Card>
-          )}
+          {user.isSellerApproved && <SellerProfilePanel userId={user.id} />}
         </>
       )}
     </div>

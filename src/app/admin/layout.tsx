@@ -1,7 +1,11 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, BarChart3, Bell, BookOpen, CreditCard, FileText, FolderTree, HandCoins, Inbox, LogOut, MessageSquareWarning, Settings, Smartphone, Star, Store, TrendingUp, Users, Wallet, type LucideIcon } from 'lucide-react';
+import {
+  AlertTriangle, BarChart3, Bell, BookOpen, ClipboardList, CreditCard, FileText, FolderTree,
+  HandCoins, History, Inbox, LogOut, MessageSquareWarning, Settings, Smartphone, Star, Store,
+  TrendingUp, Users, Wallet, type LucideIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -17,25 +21,72 @@ interface MeUser {
   isAdmin: boolean;
 }
 
-const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: BarChart3 },
-  { href: '/admin/applications', label: 'Seller arizalari', icon: FileText },
-  { href: '/admin/categories', label: 'Kategoriyalar', icon: FolderTree },
-  { href: '/admin/catalog', label: 'Global katalog', icon: BookOpen },
-  { href: '/admin/shops', label: "Do'konlar", icon: Store },
-  { href: '/admin/complaints', label: 'Shikoyatlar', icon: MessageSquareWarning },
-  { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
-  { href: '/admin/notifications', label: 'Bildirishnomalar', icon: Bell },
-  { href: '/admin/releases', label: 'Ilova versiyalari', icon: Smartphone },
-  { href: '/admin/inquiries', label: 'Murojaatlar', icon: Inbox },
-  { href: '/admin/balance', label: 'Balanslar', icon: Wallet },
-  { href: '/admin/withdrawals', label: 'Yechish so\'rovlar', icon: CreditCard },
-  { href: '/admin/debts', label: 'Qarzlar', icon: AlertTriangle },
-  { href: '/admin/payables', label: "Do'kon majburiyatlari", icon: HandCoins },
-  { href: '/admin/prime', label: 'Prime obuna', icon: Star },
-  { href: '/admin/analytics', label: 'Analytics', icon: TrendingUp },
-  { href: '/admin/settings', label: 'Sozlamalar', icon: Settings },
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  /** Query key to read a live badge count from (e.g. unread inquiries). */
+  badgeKey?: string;
+}
+
+const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
+  {
+    title: 'Boshqaruv',
+    items: [
+      { href: '/admin/dashboard', label: 'Dashboard', icon: BarChart3 },
+      { href: '/admin/analytics', label: 'Analytics', icon: TrendingUp },
+    ],
+  },
+  {
+    title: 'Onboarding',
+    items: [
+      { href: '/admin/applications', label: 'Seller arizalari', icon: FileText },
+    ],
+  },
+  {
+    title: 'Katalog',
+    items: [
+      { href: '/admin/categories', label: 'Kategoriyalar', icon: FolderTree },
+      { href: '/admin/catalog', label: 'Global katalog', icon: BookOpen },
+    ],
+  },
+  {
+    title: 'Tarmoq',
+    items: [
+      { href: '/admin/shops', label: "Do'konlar", icon: Store },
+      { href: '/admin/orders', label: 'Buyurtmalar', icon: ClipboardList },
+      { href: '/admin/complaints', label: 'Shikoyatlar', icon: MessageSquareWarning },
+    ],
+  },
+  {
+    title: 'Moliya',
+    items: [
+      { href: '/admin/balance', label: 'Balanslar', icon: Wallet },
+      { href: '/admin/withdrawals', label: 'Yechish so\'rovlar', icon: CreditCard },
+      { href: '/admin/debts', label: 'Qarzlar', icon: AlertTriangle },
+      { href: '/admin/payables', label: "Do'kon majburiyatlari", icon: HandCoins },
+      { href: '/admin/prime', label: 'Prime obuna', icon: Star },
+    ],
+  },
+  {
+    title: 'Foydalanuvchilar',
+    items: [
+      { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
+      { href: '/admin/inquiries', label: 'Murojaatlar', icon: Inbox, badgeKey: 'contactUnread' },
+    ],
+  },
+  {
+    title: 'Tizim',
+    items: [
+      { href: '/admin/notifications', label: 'Bildirishnomalar', icon: Bell },
+      { href: '/admin/releases', label: 'Ilova versiyalari', icon: Smartphone },
+      { href: '/admin/audit-log', label: 'Amallar tarixi', icon: History },
+      { href: '/admin/settings', label: 'Sozlamalar', icon: Settings },
+    ],
+  },
 ];
+
+const NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -54,6 +105,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     enabled: !!tokenStore.access,
     retry: false,
   });
+
+  const contactUnreadQuery = useQuery({
+    queryKey: ['admin', 'contact-unread'],
+    queryFn: async () => (await api.get<number>('/admin/contact/unread-count')).data,
+    enabled: !!tokenStore.access && !!meQuery.data?.isAdmin,
+    refetchInterval: 60_000,
+  });
+  const badgeCounts: Record<string, number> = {
+    contactUnread: contactUnreadQuery.data ?? 0,
+  };
 
   useEffect(() => {
     if (!tokenStore.access) {
@@ -103,29 +164,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-2">
-          <p className="px-3 pb-2 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Boshqaruv
-          </p>
-          <div className="space-y-1">
-            {NAV_ITEMS.map((item) => {
-              const isActive = pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent',
-                  )}>
-                  <item.icon className="size-4" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
+        <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.title}>
+              <p className="px-3 pb-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                {group.title}
+              </p>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const isActive = pathname.startsWith(item.href);
+                  const badge = item.badgeKey ? badgeCounts[item.badgeKey] : 0;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-sidebar-foreground hover:bg-sidebar-accent',
+                      )}>
+                      <item.icon className="size-4" />
+                      <span className="flex-1">{item.label}</span>
+                      {badge > 0 ? (
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[0.65rem] font-bold text-primary-foreground">
+                          {badge > 99 ? '99+' : badge}
+                        </span>
+                      ) : null}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="border-t border-sidebar-border p-3">

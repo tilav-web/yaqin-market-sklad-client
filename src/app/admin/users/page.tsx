@@ -219,6 +219,7 @@ export default function UsersAdminPage() {
   const [adminReason, setAdminReason] = useState('');
   const [adminErr, setAdminErr] = useState('');
   const [statusErr, setStatusErr] = useState('');
+  const [blockReason, setBlockReason] = useState('');
 
   const usersQuery = useQuery({
     queryKey: ['admin', 'users', state.submitted, state.roleFilter, state.page],
@@ -233,25 +234,21 @@ export default function UsersAdminPage() {
   });
 
   const setStatus = useMutation({
-    mutationFn: async ({ id, blocked }: { id: string; blocked: boolean }) => {
-      await api.patch(`/admin/users/${id}/status`, { blocked });
+    mutationFn: async ({ id, blocked, reason }: { id: string; blocked: boolean; reason?: string }) => {
+      await api.patch(`/admin/users/${id}/status`, { blocked, reason: reason || undefined });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
       setStatusErr('');
       setBlockAction(null);
+      setBlockReason('');
     },
     onError: (e) => setStatusErr(extractErrorMessage(e)),
   });
 
   const setAdmin = useMutation({
-    mutationFn: async ({ id, isAdmin }: { id: string; isAdmin: boolean }) => {
-      // NB: the backend DTO for this endpoint is currently `{ isAdmin: boolean }`
-      // only — it does not accept a reason/note field yet (see report). The
-      // reason captured below is enforced client-side as a confirmation step
-      // but isn't persisted; adding an audit-note column/DTO field on the
-      // server would be a good follow-up.
-      await api.patch(`/admin/users/${id}/admin`, { isAdmin });
+    mutationFn: async ({ id, isAdmin, reason }: { id: string; isAdmin: boolean; reason: string }) => {
+      await api.patch(`/admin/users/${id}/admin`, { isAdmin, reason });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
@@ -418,7 +415,7 @@ export default function UsersAdminPage() {
                       {u.isAdmin ? 'Admindan olish' : 'Admin qilish'}
                     </Button>
                     <Button variant={u.status === 'active' ? 'ghost' : 'outline'} size="sm" disabled={setStatus.isPending}
-                      onClick={() => { setStatusErr(''); setBlockAction({ user: u, blocking: u.status === 'active' }); }}>
+                      onClick={() => { setStatusErr(''); setBlockReason(''); setBlockAction({ user: u, blocking: u.status === 'active' }); }}>
                       {u.status === 'active' ? <UserX className="size-4 text-destructive" /> : <UserCheck className="size-4 text-success" />}
                       {u.status === 'active' ? 'Bloklash' : 'Chiqarish'}
                     </Button>
@@ -467,7 +464,7 @@ export default function UsersAdminPage() {
         onCancel={() => { setAdminAction(null); setAdminErr(''); }}
         onConfirm={() => {
           if (!adminAction || !adminReason.trim()) return;
-          setAdmin.mutate({ id: adminAction.user.id, isAdmin: adminAction.nextIsAdmin });
+          setAdmin.mutate({ id: adminAction.user.id, isAdmin: adminAction.nextIsAdmin, reason: adminReason.trim() });
         }}>
         <label className="mb-1 block text-xs font-medium text-muted-foreground">
           Sabab (ichki eslatma) <span className="text-destructive">*</span>
@@ -480,7 +477,7 @@ export default function UsersAdminPage() {
           className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
         />
         <p className="mt-1 text-[0.7rem] text-muted-foreground">
-          Hozircha backend bu sababni saqlamaydi (audit-log maydoni yo&apos;q) — faqat admin o&apos;zi bosishdan oldin sababni yozib qo&apos;yishi shart.
+          Bu sabab Amallar tarixi (audit-log) sahifasida saqlanadi.
         </p>
       </ConfirmDialog>
 
@@ -498,8 +495,20 @@ export default function UsersAdminPage() {
         pending={setStatus.isPending}
         error={statusErr}
         onCancel={() => setBlockAction(null)}
-        onConfirm={() => blockAction && setStatus.mutate({ id: blockAction.user.id, blocked: blockAction.blocking })}
-      />
+        onConfirm={() => blockAction && setStatus.mutate({
+          id: blockAction.user.id, blocked: blockAction.blocking, reason: blockReason.trim(),
+        })}>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+          Sabab (ixtiyoriy, ichki eslatma)
+        </label>
+        <textarea
+          value={blockReason}
+          onChange={(e) => setBlockReason(e.target.value)}
+          placeholder="Nega bu o'zgarish qilinmoqda…"
+          rows={2}
+          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+        />
+      </ConfirmDialog>
     </div>
   );
 }
