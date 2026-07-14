@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarPlus, Edit2, Plus, Trash2 } from 'lucide-react';
+import { CalendarPlus, Edit2, Plus, Star, TrendingUp, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
 
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
@@ -10,6 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+
+interface RevenueStats {
+  totalRevenue: number;
+  revenue30d: number;
+  activeSubscriptions: number;
+  byPlan: { planId: string; planName: string; activeCount: number; monthlyRecurringValue: number }[];
+}
 
 interface PrimePlan {
   id: string;
@@ -54,6 +61,11 @@ export default function AdminPrimePage() {
     queryKey: ['admin', 'prime', 'subs'],
     queryFn: async () => (await api.get('/admin/prime/subscriptions')).data,
     enabled: tab === 'subs',
+  });
+  const revenueQ = useQuery<RevenueStats>({
+    queryKey: ['admin', 'prime', 'revenue-stats'],
+    queryFn: async () => (await api.get('/admin/prime/revenue-stats')).data,
+    refetchInterval: 60_000,
   });
 
   const save = useMutation({
@@ -121,9 +133,50 @@ export default function AdminPrimePage() {
     });
   };
 
+  const revenue = revenueQ.data;
+
   return (
     <div className="p-6">
       <PageHeader title="Prime obuna" description="Tariflar va obunalar boshqaruvi" />
+
+      {revenue && (
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <Card className="flex items-start gap-3 p-4">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/8">
+              <TrendingUp className="size-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Umumiy daromad</p>
+              <p className="mt-0.5 text-xl font-bold text-foreground">{fmt(String(revenue.totalRevenue))}</p>
+              <p className="text-xs text-muted-foreground">Oxirgi 30 kun: {fmt(String(revenue.revenue30d))}</p>
+            </div>
+          </Card>
+          <Card className="flex items-start gap-3 p-4">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/8">
+              <Users className="size-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Faol obunalar</p>
+              <p className="mt-0.5 text-xl font-bold text-foreground">{revenue.activeSubscriptions}</p>
+            </div>
+          </Card>
+          <Card className="p-4">
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Star className="size-3.5" /> Tarif bo&apos;yicha faol
+            </p>
+            <div className="mt-1.5 space-y-0.5">
+              {revenue.byPlan.length === 0 ? (
+                <p className="text-sm text-muted-foreground">—</p>
+              ) : revenue.byPlan.map((p) => (
+                <p key={p.planId} className="flex justify-between text-sm">
+                  <span>{p.planName}</span>
+                  <span className="font-medium text-foreground">{p.activeCount} ta</span>
+                </p>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="mt-6 flex gap-2 border-b border-border">
