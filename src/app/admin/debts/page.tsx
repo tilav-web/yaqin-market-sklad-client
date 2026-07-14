@@ -21,6 +21,14 @@ interface OverdueDebt {
 
 const fmt = (v: string) => Number(v).toLocaleString('uz-UZ') + " so'm";
 
+// Mirrors the server's ExtendDebtDto (@IsInt() @Min(1) @Max(365)) — the
+// number input's min/max attrs are visual only, a user can still type/paste
+// an out-of-range value, so the button must gate on the same rule.
+const isValidExtendDays = (raw: string | undefined): boolean => {
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 1 && n <= 365;
+};
+
 type PendingDebtAction =
   | { kind: 'forgive'; debt: OverdueDebt; reason: string }
   | { kind: 'extend'; debt: OverdueDebt; days: number };
@@ -139,7 +147,7 @@ export default function AdminDebtsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={actionPending || !Number(extendDays[d.sellerId] ?? 0)}
+                  disabled={actionPending || !isValidExtendDays(extendDays[d.sellerId])}
                   onClick={() => setPendingAction({ kind: 'extend', debt: d, days: Number(extendDays[d.sellerId] ?? 7) })}
                 >
                   Muddatni uzaytirish

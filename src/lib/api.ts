@@ -76,8 +76,17 @@ api.interceptors.response.use(
         return api(original);
       } catch (e) {
         refreshPromise = null;
-        tokenStore.clear();
-        if (globalThis.window !== undefined) globalThis.window.location.href = '/login';
+        // Only a genuine rejection from the server (refresh token invalid,
+        // expired, or revoked) means the session is actually over. A network
+        // error, timeout, or 5xx from a flaky connection must not wipe the
+        // session and force a logout mid-action — the refresh token itself
+        // may still be perfectly valid.
+        const refreshStatus = axios.isAxiosError(e) ? e.response?.status : undefined;
+        const sessionInvalid = refreshStatus === 401 || refreshStatus === 403;
+        if (sessionInvalid) {
+          tokenStore.clear();
+          if (globalThis.window !== undefined) globalThis.window.location.href = '/login';
+        }
         throw e;
       }
     }
