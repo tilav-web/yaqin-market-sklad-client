@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, ExternalLink, Eye, Search, Send, ShieldCheck, ShieldOff, UserCheck, UserX, X } from 'lucide-react';
+import { Bell, Download, ExternalLink, Eye, Search, Send, ShieldCheck, ShieldOff, UserCheck, UserX, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useReducer, useState } from 'react';
@@ -13,7 +13,7 @@ import { Pagination } from '@/components/admin/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
-import { api, extractErrorMessage } from '@/lib/api';
+import { api, downloadFile, extractErrorMessage } from '@/lib/api';
 import { stripHtml } from '@/lib/notif-utils';
 import { useAdminNotifStore } from '@/stores/admin-notif';
 
@@ -282,13 +282,33 @@ export default function UsersAdminPage() {
     { key: 'admins', label: 'Adminlar' },
   ];
 
+  const [exportErr, setExportErr] = useState('');
+  const exportXlsx = useMutation({
+    mutationFn: () =>
+      downloadFile('/admin/users/export', 'foydalanuvchilar.xlsx', {
+        search: state.submitted || undefined,
+        sellerOnly: state.roleFilter === 'sellers' ? 'true' : undefined,
+        customerOnly: state.roleFilter === 'customers' ? 'true' : undefined,
+        adminOnly: state.roleFilter === 'admins' ? 'true' : undefined,
+      }),
+    onError: (e) => setExportErr(extractErrorMessage(e)),
+  });
+
   return (
     <div className="space-y-5 p-6">
       <PageHeader
         eyebrow="Hisoblar"
         title="Foydalanuvchilar"
         description="Foydalanuvchilarni boshqarish va bildirishnoma yuborish."
+        actions={
+          <Button variant="outline" size="sm" disabled={exportXlsx.isPending} onClick={() => { setExportErr(''); exportXlsx.mutate(); }}>
+            <Download className="size-4" /> {exportXlsx.isPending ? 'Yuklanmoqda…' : 'Eksport'}
+          </Button>
+        }
       />
+      {exportErr && (
+        <p className="rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{exportErr}</p>
+      )}
 
       {/* Search + filters */}
       <div className="flex flex-wrap items-center gap-3">

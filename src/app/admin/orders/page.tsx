@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, MapPin, Package, Phone, ShieldOff, Search, Store, X } from 'lucide-react';
+import { Download, Eye, MapPin, Package, Phone, ShieldOff, Search, Store, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
@@ -9,7 +9,7 @@ import { Pagination } from '@/components/admin/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
-import { api, extractErrorMessage } from '@/lib/api';
+import { api, downloadFile, extractErrorMessage } from '@/lib/api';
 
 type OrderStatus = 'new' | 'accepted' | 'preparing' | 'delivering' | 'delivered' | 'cancelled';
 type PaymentMethod = 'cash' | 'click_online';
@@ -305,13 +305,33 @@ export default function AdminOrdersPage() {
   const orders = ordersQuery.data?.items ?? [];
   const total = ordersQuery.data?.total ?? 0;
 
+  const [exportErr, setExportErr] = useState('');
+  const exportXlsx = useMutation({
+    mutationFn: () =>
+      downloadFile('/admin/orders/export', 'buyurtmalar.xlsx', {
+        search: submitted || undefined,
+        status: status || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      }),
+    onError: (e) => setExportErr(extractErrorMessage(e)),
+  });
+
   return (
     <div className="space-y-6 p-6">
       <PageHeader
         eyebrow="Tarmoq"
         title="Buyurtmalar"
         description="Platforma bo'ylab barcha buyurtmalarni qidirish, filtrlash va ko'rish."
+        actions={
+          <Button variant="outline" size="sm" disabled={exportXlsx.isPending} onClick={() => { setExportErr(''); exportXlsx.mutate(); }}>
+            <Download className="size-4" /> {exportXlsx.isPending ? 'Yuklanmoqda…' : 'Eksport'}
+          </Button>
+        }
       />
+      {exportErr && (
+        <p className="rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{exportErr}</p>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <form

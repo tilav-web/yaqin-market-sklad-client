@@ -6,7 +6,7 @@ import { useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { api, extractErrorMessage } from '@/lib/api';
+import { api, downloadFile, extractErrorMessage } from '@/lib/api';
 
 interface PreviewRow {
   rowNumber: number;
@@ -47,15 +47,7 @@ export function CatalogImportModal({ onClose }: { onClose: () => void }) {
   const [downloadErr, setDownloadErr] = useState('');
 
   const downloadTemplate = useMutation({
-    mutationFn: async () => {
-      const res = await api.get('/admin/catalog/import/template', { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'katalog-shabloni.xlsx';
-      a.click();
-      window.URL.revokeObjectURL(url);
-    },
+    mutationFn: () => downloadFile('/admin/catalog/import/template', 'katalog-shabloni.xlsx'),
     onError: (e) => setDownloadErr(extractErrorMessage(e)),
   });
 

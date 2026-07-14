@@ -105,3 +105,18 @@ export function extractErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   return 'Xatolik';
 }
+
+/** Fetch an authenticated binary endpoint (e.g. an .xlsx export) and trigger a browser download. */
+export async function downloadFile(
+  url: string,
+  filename: string,
+  params?: Record<string, unknown>,
+): Promise<void> {
+  const res = await api.get(url, { params, responseType: 'blob' });
+  const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  a.click();
+  window.URL.revokeObjectURL(blobUrl);
+}

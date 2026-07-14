@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, X } from 'lucide-react';
+import { Check, Download, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
@@ -10,7 +10,7 @@ import { Pagination } from '@/components/admin/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { api, extractErrorMessage } from '@/lib/api';
+import { api, downloadFile, extractErrorMessage } from '@/lib/api';
 
 interface Withdrawal {
   id: string;
@@ -75,9 +75,26 @@ export default function WithdrawalsPage() {
     },
   });
 
+  const [exportErr, setExportErr] = useState('');
+  const exportXlsx = useMutation({
+    mutationFn: () => downloadFile('/admin/balance/withdrawals/export', 'yechish-sorovlar.xlsx', { status: filter }),
+    onError: (e) => setExportErr(extractErrorMessage(e)),
+  });
+
   return (
     <div className="p-6">
-      <PageHeader title="Yechish so'rovlar" description="Seller mablag' yechish arizalari" />
+      <PageHeader
+        title="Yechish so'rovlar"
+        description="Seller mablag' yechish arizalari"
+        actions={
+          <Button variant="outline" size="sm" disabled={exportXlsx.isPending} onClick={() => { setExportErr(''); exportXlsx.mutate(); }}>
+            <Download className="size-4" /> {exportXlsx.isPending ? 'Yuklanmoqda…' : 'Eksport'}
+          </Button>
+        }
+      />
+      {exportErr && (
+        <p className="mt-4 rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{exportErr}</p>
+      )}
 
       <div className="mt-6 flex gap-2">
         {(['pending', 'processing', 'completed', 'rejected'] as const).map((s) => (
