@@ -6,6 +6,7 @@ import { useState } from 'react';
 
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { PageHeader } from '@/components/admin/page-header';
+import { Pagination } from '@/components/admin/pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -21,7 +22,12 @@ interface Withdrawal {
   requestedAt: string;
   processedAt: string | null;
   adminNote: string | null;
+  seller: { id: string; name: string | null; phone: string } | null;
 }
+
+interface WithdrawalsPageResp { items: Withdrawal[]; total: number }
+
+const PAGE_SIZE = 30;
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Kutilmoqda',
@@ -44,13 +50,21 @@ type PendingDecision = { withdrawal: Withdrawal; approve: boolean };
 export default function WithdrawalsPage() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<string>('pending');
+  const [page, setPage] = useState(0);
   const [note, setNote] = useState<Record<string, string>>({});
   const [pendingDecision, setPendingDecision] = useState<PendingDecision | null>(null);
 
-  const { data, isLoading, isError, error, refetch } = useQuery<Withdrawal[]>({
-    queryKey: ['admin', 'withdrawals', filter],
-    queryFn: async () => (await api.get('/admin/balance/withdrawals', { params: { status: filter } })).data,
+  const withdrawalsQuery = useQuery<WithdrawalsPageResp>({
+    queryKey: ['admin', 'withdrawals', filter, page],
+    queryFn: async () =>
+      (await api.get('/admin/balance/withdrawals', {
+        params: { status: filter, limit: PAGE_SIZE, offset: page * PAGE_SIZE },
+      })).data,
+    placeholderData: (prev) => prev,
   });
+  const { isLoading, isError, error, refetch } = withdrawalsQuery;
+  const items = withdrawalsQuery.data?.items ?? [];
+  const total = withdrawalsQuery.data?.total ?? 0;
 
   const process = useMutation({
     mutationFn: ({ id, approve, adminNote }: { id: string; approve: boolean; adminNote?: string }) =>
@@ -69,7 +83,7 @@ export default function WithdrawalsPage() {
         {(['pending', 'processing', 'completed', 'rejected'] as const).map((s) => (
           <button
             key={s}
-            onClick={() => setFilter(s)}
+            onClick={() => { setFilter(s); setPage(0); }}
             className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
               filter === s
                 ? 'bg-primary text-primary-foreground'
@@ -90,7 +104,7 @@ export default function WithdrawalsPage() {
       )}
 
       <div className="mt-4 space-y-3">
-        {(data ?? []).map((w) => (
+        {items.map((w) => (
           <Card key={w.id} className="p-4">
             <div className="flex flex-wrap items-start gap-4">
               <div className="min-w-0 flex-1">
@@ -98,6 +112,11 @@ export default function WithdrawalsPage() {
                   <Badge variant={STATUS_COLOR[w.status]}>{STATUS_LABEL[w.status]}</Badge>
                   <span className="text-lg font-bold text-green-600">{fmt(w.amount)}</span>
                 </div>
+                {w.seller && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Sotuvchi: <span className="text-foreground">{w.seller.name || w.seller.phone}</span>
+                  </p>
+                )}
                 <p className="mt-1 text-sm font-medium">{w.bankCardHolderName}</p>
                 <p className="font-mono text-sm text-muted-foreground">{w.bankCardNumber}</p>
                 <p className="text-xs text-muted-foreground">
@@ -139,9 +158,13 @@ export default function WithdrawalsPage() {
           </Card>
         ))}
 
-        {!isLoading && (data ?? []).length === 0 && (
+        {!isLoading && items.length === 0 && (
           <p className="py-8 text-center text-sm text-muted-foreground">So'rovlar yo'q</p>
         )}
+      </div>
+
+      <div className="mt-4">
+        <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPage={setPage} />
       </div>
 
       <ConfirmDialog

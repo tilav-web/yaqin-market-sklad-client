@@ -1,9 +1,10 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BadgeCheck, ChevronLeft, ChevronRight, Eye, Package, Pencil, Plus, Search, Store, X } from 'lucide-react';
+import { BadgeCheck, ChevronLeft, ChevronRight, Eye, Package, Pencil, Plus, Search, Store, Upload, X } from 'lucide-react';
 import { useReducer, useState } from 'react';
 
+import { CatalogImportModal } from '@/components/admin/catalog-import-modal';
 import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -166,6 +167,7 @@ export default function CatalogPage() {
   const [formError, setFormError] = useState('');
   const [verifyErr, setVerifyErr] = useState('');
   const [usageProduct, setUsageProduct] = useState<GlobalProduct | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const categoriesQuery = useQuery<Category[]>({
     queryKey: ['admin', 'categories', 'active'],
@@ -250,9 +252,14 @@ export default function CatalogPage() {
         title="Global Katalog"
         description="Barcha do'konlar uchun umumiy mahsulot bazasi"
         actions={
-          <Button onClick={() => dispatch({ type: 'OPEN_CREATE' })}>
-            <Plus className="w-4 h-4 mr-2" />Mahsulot qo'shish
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="w-4 h-4 mr-2" />Ommaviy import
+            </Button>
+            <Button onClick={() => dispatch({ type: 'OPEN_CREATE' })}>
+              <Plus className="w-4 h-4 mr-2" />Mahsulot qo'shish
+            </Button>
+          </div>
         }
       />
 
@@ -487,6 +494,7 @@ export default function CatalogPage() {
       )}
 
       {usageProduct && <UsageModal product={usageProduct} onClose={() => setUsageProduct(null)} />}
+      {importOpen && <CatalogImportModal onClose={() => setImportOpen(false)} />}
     </div>
   );
 }

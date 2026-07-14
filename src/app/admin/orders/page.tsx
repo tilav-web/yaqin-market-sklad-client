@@ -1,7 +1,7 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { Eye, MapPin, Package, Phone, Search, Store, X } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Eye, MapPin, Package, Phone, ShieldOff, Search, Store, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
@@ -41,6 +41,7 @@ interface AdminOrderSummary {
   paymentStatus: PaymentStatus;
   total: number;
   createdAt: string;
+  commissionExempt: boolean;
   shop: { id: string; name: string; address: string } | null;
   user: { id: string; name: string | null; phone: string } | null;
 }
@@ -103,11 +104,23 @@ const STATUS_FILTERS: { key: OrderStatus | ''; label: string }[] = [
 const money = (n: number) => n.toLocaleString('uz-UZ') + " so'm";
 
 function OrderDetailModal({ orderId, onClose }: { orderId: string; onClose: () => void }) {
+  const qc = useQueryClient();
   const q = useQuery<AdminOrderDetail>({
     queryKey: ['admin', 'orders', 'detail', orderId],
     queryFn: async () => (await api.get(`/admin/orders/${orderId}`)).data,
   });
   const o = q.data;
+
+  const setExempt = useMutation({
+    mutationFn: async (exempt: boolean) => {
+      await api.patch(`/admin/orders/${orderId}/exempt`, { exempt });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'orders', 'detail', orderId] });
+      qc.invalidateQueries({ queryKey: ['admin', 'orders'] });
+    },
+  });
+  const exemptLocked = o ? (o.status === 'delivered' || o.status === 'cancelled') : true;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
@@ -139,10 +152,33 @@ function OrderDetailModal({ orderId, onClose }: { orderId: string; onClose: () =
                 {o.paymentMethod === 'click_online' ? ' · Click' : ''}
               </Badge>
               {o.channel === 'in_store' && <Badge variant="neutral">Do&apos;konda sotuv</Badge>}
+              {o.commissionExempt && <Badge variant="warning">Komissiyasiz</Badge>}
               <span className="ml-auto text-xs text-muted-foreground">
                 {new Date(o.createdAt).toLocaleString('uz-UZ')}
               </span>
             </div>
+
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">Komissiyasiz buyurtma</p>
+                <p className="text-xs text-muted-foreground">
+                  {exemptLocked
+                    ? "Buyurtma allaqachon yetkazilgan/bekor qilingan — bu belgi endi ta'sir qilmaydi."
+                    : "Yoqilsa, bu buyurtma yetkazilganda 0% komissiya bilan hisoblanadi."}
+                </p>
+              </div>
+              <Button
+                variant={o.commissionExempt ? 'destructive' : 'outline'}
+                size="sm"
+                disabled={exemptLocked || setExempt.isPending}
+                onClick={() => setExempt.mutate(!o.commissionExempt)}>
+                <ShieldOff className="size-4" />
+                {o.commissionExempt ? 'Bekor qilish' : 'Komissiyasiz qilish'}
+              </Button>
+            </div>
+            {setExempt.isError && (
+              <p className="text-sm text-destructive">{extractErrorMessage(setExempt.error)}</p>
+            )}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-lg border border-border p-3">
@@ -359,7 +395,10 @@ export default function AdminOrdersPage() {
                   {o.user?.name || o.user?.phone || <span className="italic">Do&apos;kon mijozi</span>}
                 </td>
                 <td className="px-4 py-3">
-                  <Badge variant={STATUS_VARIANT[o.status]}>{STATUS_LABEL[o.status]}</Badge>
+                  <div className="flex flex-wrap gap-1">
+                    <Badge variant={STATUS_VARIANT[o.status]}>{STATUS_LABEL[o.status]}</Badge>
+                    {o.commissionExempt && <Badge variant="warning">Komissiyasiz</Badge>}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <Badge variant={PAYMENT_STATUS_VARIANT[o.paymentStatus]}>

@@ -13,7 +13,8 @@ type AuditAction =
   | 'user_promoted' | 'user_demoted' | 'user_blocked' | 'user_unblocked'
   | 'shop_activated' | 'shop_deactivated'
   | 'balance_adjusted' | 'transaction_force_settled' | 'transaction_force_refunded'
-  | 'debt_forgiven' | 'debt_extended' | 'prime_subscription_extended';
+  | 'debt_forgiven' | 'debt_extended' | 'prime_subscription_extended'
+  | 'order_commission_exempted' | 'order_commission_exempt_removed';
 
 interface AuditLogEntry {
   id: string;
@@ -44,6 +45,8 @@ const ACTION_LABEL: Record<AuditAction, string> = {
   debt_forgiven: 'Qarz kechirildi',
   debt_extended: 'Qarz muddati uzaytirildi',
   prime_subscription_extended: 'Prime obuna uzaytirildi',
+  order_commission_exempted: 'Buyurtma komissiyasiz qilindi',
+  order_commission_exempt_removed: 'Buyurtma komissiyasi qaytarildi',
 };
 
 const ACTION_VARIANT: Record<AuditAction, 'success' | 'danger' | 'warning' | 'neutral'> = {
@@ -59,6 +62,8 @@ const ACTION_VARIANT: Record<AuditAction, 'success' | 'danger' | 'warning' | 'ne
   debt_forgiven: 'success',
   debt_extended: 'neutral',
   prime_subscription_extended: 'neutral',
+  order_commission_exempted: 'warning',
+  order_commission_exempt_removed: 'neutral',
 };
 
 const ACTION_FILTERS: { key: AuditAction | ''; label: string }[] = [
@@ -71,6 +76,7 @@ const ACTION_FILTERS: { key: AuditAction | ''; label: string }[] = [
   { key: 'balance_adjusted', label: "Balans tuzatildi" },
   { key: 'debt_forgiven', label: 'Qarz kechirildi' },
   { key: 'prime_subscription_extended', label: 'Prime uzaytirildi' },
+  { key: 'order_commission_exempted', label: 'Komissiyasiz qilindi' },
 ];
 
 function metadataSummary(entry: AuditLogEntry): string | null {
