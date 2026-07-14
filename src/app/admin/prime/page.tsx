@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Edit2, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
+import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ export default function AdminPrimePage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editing, setEditing] = useState<string | null>(null);
   const [err, setErr] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<PrimePlan | null>(null);
 
   const plansQ = useQuery<PrimePlan[]>({
     queryKey: ['admin', 'prime', 'plans'],
@@ -83,7 +85,10 @@ export default function AdminPrimePage() {
 
   const del = useMutation({
     mutationFn: (id: string) => api.delete(`/admin/prime/plans/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'prime', 'plans'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'prime', 'plans'] });
+      setPendingDelete(null);
+    },
   });
 
   const startEdit = (p: PrimePlan) => {
@@ -201,7 +206,7 @@ export default function AdminPrimePage() {
                         size="icon-sm"
                         variant="ghost"
                         className="text-destructive"
-                        onClick={() => del.mutate(p.id)}
+                        onClick={() => { del.reset(); setPendingDelete(p); }}
                       >
                         <Trash2 className="size-3" />
                       </Button>
@@ -239,6 +244,26 @@ export default function AdminPrimePage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Tarifni o'chirish"
+        description={pendingDelete && (
+          <div className="space-y-1">
+            <p>
+              Tarif: <span className="font-semibold text-foreground">{pendingDelete.name}</span>
+            </p>
+            <p className="mt-2 text-destructive">
+              Bu amalni ortga qaytarib bo&apos;lmaydi. Agar bu tarifga faol obuna bo&apos;lgan sotuvchilar bo&apos;lsa, server bu amalni rad etadi.
+            </p>
+          </div>
+        )}
+        confirmLabel="Ha, o'chirish"
+        pending={del.isPending}
+        error={del.isError ? extractErrorMessage(del.error) : ''}
+        onConfirm={() => pendingDelete && del.mutate(pendingDelete.id)}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { Bell, ChevronDown, ChevronUp, Edit2, Plus, Search, Send, Trash2, Users,
 import dynamic from 'next/dynamic';
 import { Suspense, useCallback, useEffect, useReducer, useRef, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { NotifComposeForm } from '@/components/admin/notif-compose-form';
 import { PageHeader } from '@/components/admin/page-header';
 import { Pagination } from '@/components/admin/pagination';
@@ -143,6 +144,7 @@ function TemplateManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFields, setEditFields] = useState({ name: '', title: '', richBody: '', imageUrl: '' });
   const [editImgLoading, setEditImgLoading] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const updateTpl = useMutation({
     mutationFn: async (id: string) => {
@@ -155,9 +157,12 @@ function TemplateManager({
     onSuccess: () => { onRefresh(); setEditingId(null); },
   });
 
+  const [deleteErr, setDeleteErr] = useState('');
+
   const deleteTpl = useMutation({
     mutationFn: async (id: string) => { await api.delete(`/admin/notifications/templates/${id}`); },
-    onSuccess: () => { onRefresh(); setExpandedId(null); setEditingId(null); },
+    onSuccess: () => { onRefresh(); setExpandedId(null); setEditingId(null); setPendingDeleteId(null); setDeleteErr(''); },
+    onError: (e) => setDeleteErr(extractErrorMessage(e)),
   });
 
   if (templates.length === 0)
@@ -198,7 +203,7 @@ function TemplateManager({
                   </Button>
                   <Button size="sm" variant="outline" className="text-destructive hover:text-destructive"
                     disabled={deleteTpl.isPending}
-                    onClick={() => { if (confirm(`"${t.name}" o'chirilsinmi?`)) deleteTpl.mutate(t.id); }}>
+                    onClick={() => { setDeleteErr(''); setPendingDeleteId(t.id); }}>
                     <Trash2 className="size-3.5" /> O'chirish
                   </Button>
                 </div>
@@ -231,6 +236,19 @@ function TemplateManager({
           </div>
         );
       })}
+
+      <ConfirmDialog
+        open={!!pendingDeleteId}
+        title="Shablonni o'chirish"
+        description={
+          <p>Shablon: <span className="font-semibold text-foreground">{templates.find((t) => t.id === pendingDeleteId)?.name}</span></p>
+        }
+        confirmLabel="Ha, o'chirish"
+        pending={deleteTpl.isPending}
+        error={deleteErr}
+        onConfirm={() => pendingDeleteId && deleteTpl.mutate(pendingDeleteId)}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </div>
   );
 }

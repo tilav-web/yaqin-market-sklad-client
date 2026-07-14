@@ -215,6 +215,7 @@ export default function UsersAdminPage() {
   const setNotifTarget = useAdminNotifStore((s) => s.setTarget);
   const [state, dispatch] = useReducer(usersReducer, USERS_INIT);
   const [adminAction, setAdminAction] = useState<{ user: AdminUser; nextIsAdmin: boolean } | null>(null);
+  const [blockAction, setBlockAction] = useState<{ user: AdminUser; blocking: boolean } | null>(null);
   const [adminReason, setAdminReason] = useState('');
   const [adminErr, setAdminErr] = useState('');
   const [statusErr, setStatusErr] = useState('');
@@ -235,7 +236,11 @@ export default function UsersAdminPage() {
     mutationFn: async ({ id, blocked }: { id: string; blocked: boolean }) => {
       await api.patch(`/admin/users/${id}/status`, { blocked });
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'users'] }); setStatusErr(''); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+      setStatusErr('');
+      setBlockAction(null);
+    },
     onError: (e) => setStatusErr(extractErrorMessage(e)),
   });
 
@@ -413,11 +418,7 @@ export default function UsersAdminPage() {
                       {u.isAdmin ? 'Admindan olish' : 'Admin qilish'}
                     </Button>
                     <Button variant={u.status === 'active' ? 'ghost' : 'outline'} size="sm" disabled={setStatus.isPending}
-                      onClick={() => {
-                        const blocking = u.status === 'active';
-                        if (confirm(`${u.name || u.phone} ni ${blocking ? 'bloklaysizmi' : 'blokdan chiqarasizmi'}?`))
-                          setStatus.mutate({ id: u.id, blocked: blocking });
-                      }}>
+                      onClick={() => { setStatusErr(''); setBlockAction({ user: u, blocking: u.status === 'active' }); }}>
                       {u.status === 'active' ? <UserX className="size-4 text-destructive" /> : <UserCheck className="size-4 text-success" />}
                       {u.status === 'active' ? 'Bloklash' : 'Chiqarish'}
                     </Button>
@@ -482,6 +483,23 @@ export default function UsersAdminPage() {
           Hozircha backend bu sababni saqlamaydi (audit-log maydoni yo&apos;q) — faqat admin o&apos;zi bosishdan oldin sababni yozib qo&apos;yishi shart.
         </p>
       </ConfirmDialog>
+
+      <ConfirmDialog
+        open={!!blockAction}
+        title={blockAction?.blocking ? 'Foydalanuvchini bloklash' : 'Blokdan chiqarish'}
+        destructive={!!blockAction?.blocking}
+        description={blockAction && (
+          <p>
+            Foydalanuvchi: <span className="font-medium text-foreground">{blockAction.user.name || blockAction.user.phone}</span>
+            {' '}({blockAction.user.phone})
+          </p>
+        )}
+        confirmLabel={blockAction?.blocking ? 'Ha, bloklash' : 'Ha, chiqarish'}
+        pending={setStatus.isPending}
+        error={statusErr}
+        onCancel={() => setBlockAction(null)}
+        onConfirm={() => blockAction && setStatus.mutate({ id: blockAction.user.id, blocked: blockAction.blocking })}
+      />
     </div>
   );
 }

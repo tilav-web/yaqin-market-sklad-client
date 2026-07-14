@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useReducer, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,7 @@ export default function CategoriesPage() {
   const [form, dispatch] = useReducer(formReducer, FORM_INIT);
   const [formErr, setFormErr] = useState('');
   const [listErr, setListErr] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<Category | null>(null);
 
   const treeQuery = useQuery({
     queryKey: ['admin', 'categories', 'all'],
@@ -84,7 +86,10 @@ export default function CategoriesPage() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => { await api.delete(`/categories/${id}`); },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'categories', 'all'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'categories', 'all'] });
+      setPendingDelete(null);
+    },
     onError: (e) => setListErr(extractErrorMessage(e)),
   });
 
@@ -125,7 +130,7 @@ export default function CategoriesPage() {
             onAddChild={(id) => { setListErr(''); dispatch({ type: 'OPEN_CREATE', parentId: id }); }}
             onEdit={(c) => { setListErr(''); dispatch({ type: 'OPEN_EDIT', category: c }); }}
             onToggleActive={(c) => update.mutate({ id: c.id, patch: { isActive: !c.isActive } })}
-            onDelete={(id) => remove.mutate(id)}
+            onDelete={(c) => { setListErr(''); setPendingDelete(c); }}
           />
         ) : (
           <p className="px-3 py-10 text-center text-sm text-muted-foreground">
@@ -175,6 +180,26 @@ export default function CategoriesPage() {
           })}
         />
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="Kategoriyani o'chirish"
+        description={pendingDelete && (
+          <div className="space-y-1">
+            <p>Kategoriya: <span className="font-semibold text-foreground">{pendingDelete.nameUzLatn}</span></p>
+            {pendingDelete.children && pendingDelete.children.length > 0 && (
+              <p className="mt-2 text-destructive">
+                Bu kategoriyaning {pendingDelete.children.length} ta pastki kategoriyasi bor — ular o&apos;chirilmaydi, lekin ota-kategoriyasiz (ildiz darajasida) qoladi.
+              </p>
+            )}
+          </div>
+        )}
+        confirmLabel="Ha, o'chirish"
+        pending={remove.isPending}
+        error={listErr}
+        onConfirm={() => pendingDelete && remove.mutate(pendingDelete.id)}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }
@@ -187,7 +212,7 @@ function CategoryList({
   onAddChild: (id: string) => void;
   onEdit: (c: Category) => void;
   onToggleActive: (c: Category) => void;
-  onDelete: (id: string) => void;
+  onDelete: (c: Category) => void;
 }) {
   return (
     <ul className="space-y-0.5">
@@ -212,7 +237,7 @@ function CategoryList({
                 <Pencil className="size-4" />
               </Button>
               <Button variant="ghost" size="icon-sm"
-                onClick={() => { if (confirm(`"${c.nameUzLatn}" ni o'chirasizmi?`)) onDelete(c.id); }}>
+                onClick={() => onDelete(c)}>
                 <Trash2 className="size-4 text-destructive" />
               </Button>
             </div>

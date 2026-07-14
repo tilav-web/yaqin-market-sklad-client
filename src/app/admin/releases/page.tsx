@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Smartphone, Trash2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 
+import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ export default function ReleasesPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploadErr, setUploadErr] = useState('');
   const [removeErr, setRemoveErr] = useState('');
+  const [pendingRemove, setPendingRemove] = useState<Release | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const releasesQuery = useQuery({
@@ -67,12 +69,19 @@ export default function ReleasesPage() {
     mutationFn: async (id: string) => {
       await api.delete(`/admin/app-releases/${id}`);
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'releases'] }); setRemoveErr(''); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'releases'] });
+      setRemoveErr('');
+      setPendingRemove(null);
+    },
     onError: (e) => setRemoveErr(extractErrorMessage(e)),
   });
 
   const releases = releasesQuery.data ?? [];
-  const canUpload = version.trim().length > 0 && !!file && !upload.isPending;
+  // Mirrors the server's CreateReleaseDto — X.Y.Z only, so an admin doesn't
+  // find out the format is wrong only after uploading the (large) APK file.
+  const versionValid = /^\d+\.\d+\.\d+$/.test(version.trim());
+  const canUpload = versionValid && !!file && !upload.isPending;
 
   return (
     <div className="space-y-6 p-6">
@@ -88,6 +97,9 @@ export default function ReleasesPage() {
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">Versiya</label>
             <Input value={version} onChange={(e) => setVersion(e.target.value)} placeholder="1.0.3" />
+            {version.trim().length > 0 && !versionValid && (
+              <p className="text-xs text-destructive">X.Y.Z formatida bo&apos;lishi kerak (masalan 1.2.3)</p>
+            )}
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">APK fayl</label>
@@ -150,9 +162,7 @@ export default function ReleasesPage() {
                       variant="ghost"
                       size="icon-sm"
                       disabled={remove.isPending}
-                      onClick={() => {
-                        if (confirm(`${r.version} versiyasini o'chirasizmi?`)) remove.mutate(r.id);
-                      }}>
+                      onClick={() => { remove.reset(); setRemoveErr(''); setPendingRemove(r); }}>
                       <Trash2 className="size-4 text-destructive" />
                     </Button>
                   </div>
@@ -174,6 +184,26 @@ export default function ReleasesPage() {
           </tbody>
         </table>
       </Card>
+
+      <ConfirmDialog
+        open={!!pendingRemove}
+        title="Versiyani o'chirish"
+        description={pendingRemove && (
+          <div className="space-y-1">
+            <p>Versiya: <span className="font-semibold text-foreground">{pendingRemove.version}</span></p>
+            {pendingRemove.isLatest && (
+              <p className="mt-2 text-destructive">
+                Bu hozirgi &quot;so&apos;nggi&quot; versiya — o&apos;chirilgach, qolganlar orasidan eng yuqori versiya raqami avtomatik so&apos;nggi deb belgilanadi.
+              </p>
+            )}
+          </div>
+        )}
+        confirmLabel="Ha, o'chirish"
+        pending={remove.isPending}
+        error={removeErr}
+        onConfirm={() => pendingRemove && remove.mutate(pendingRemove.id)}
+        onCancel={() => setPendingRemove(null)}
+      />
     </div>
   );
 }

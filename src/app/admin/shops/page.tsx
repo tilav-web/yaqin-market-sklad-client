@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { Fragment, useState } from 'react';
 
 import { type AdminComplaint, ComplaintCard } from '@/components/admin/complaint-card';
+import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { PageHeader } from '@/components/admin/page-header';
 import { Pagination } from '@/components/admin/pagination';
 import type { ShopPin } from '@/components/admin/shops-map';
@@ -122,12 +123,17 @@ export default function ShopsAdminPage() {
   });
 
   const [actionErr, setActionErr] = useState('');
+  const [pendingToggle, setPendingToggle] = useState<AdminShop | null>(null);
 
   const setActive = useMutation({
     mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
       await api.patch(`/admin/shops/${id}/active`, { isActive });
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'shops'] }); setActionErr(''); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'shops'] });
+      setActionErr('');
+      setPendingToggle(null);
+    },
     onError: (e) => setActionErr(extractErrorMessage(e)),
   });
 
@@ -282,15 +288,7 @@ export default function ShopsAdminPage() {
                           variant={s.isActive ? 'ghost' : 'outline'}
                           size="sm"
                           disabled={setActive.isPending}
-                          onClick={() => {
-                            const deactivating = s.isActive;
-                            if (
-                              confirm(
-                                `"${s.name}" do'konini ${deactivating ? "o'chirasizmi (mijozlarga ko'rinmaydi)" : 'faollashtirasizmi'}?`,
-                              )
-                            )
-                              setActive.mutate({ id: s.id, isActive: !deactivating });
-                          }}>
+                          onClick={() => { setActionErr(''); setPendingToggle(s); }}>
                           {s.isActive ? (
                             <PowerOff className="size-4 text-destructive" />
                           ) : (
@@ -341,6 +339,25 @@ export default function ShopsAdminPage() {
           <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPage={setPage} />
         </>
       )}
+
+      <ConfirmDialog
+        open={!!pendingToggle}
+        title={pendingToggle?.isActive ? "Do'konni o'chirish" : "Do'konni faollashtirish"}
+        destructive={!!pendingToggle?.isActive}
+        description={pendingToggle && (
+          <div className="space-y-1">
+            <p>Do&apos;kon: <span className="font-semibold text-foreground">{pendingToggle.name}</span></p>
+            {pendingToggle.isActive && (
+              <p className="mt-2 text-destructive">Mijozlarga endi ko&apos;rinmaydi va yangi buyurtma qabul qila olmaydi.</p>
+            )}
+          </div>
+        )}
+        confirmLabel={pendingToggle?.isActive ? "Ha, o'chirish" : 'Ha, faollashtirish'}
+        pending={setActive.isPending}
+        error={actionErr}
+        onCancel={() => setPendingToggle(null)}
+        onConfirm={() => pendingToggle && setActive.mutate({ id: pendingToggle.id, isActive: !pendingToggle.isActive })}
+      />
     </div>
   );
 }
