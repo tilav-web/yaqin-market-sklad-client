@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/admin/page-header';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+import { toast } from '@/stores/toast';
 
 interface Setting { key: string; value: string; description: string | null; updatedAt: string }
 
@@ -43,7 +44,9 @@ export default function SettingsPage() {
     onSuccess: (_, { key }) => {
       qc.invalidateQueries({ queryKey: ['admin', 'settings'] });
       setEditing((prev) => { const next = { ...prev }; delete next[key]; return next; });
+      toast.success('Sozlama saqlandi');
     },
+    onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
   if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Yuklanmoqda…</div>;

@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, downloadFile, extractErrorMessage } from '@/lib/api';
+import { useEscapeKey } from '@/lib/use-escape-key';
+import { toast } from '@/stores/toast';
 
 type OrderStatus = 'new' | 'accepted' | 'preparing' | 'delivering' | 'delivered' | 'cancelled';
 type PaymentMethod = 'cash' | 'click_online';
@@ -105,6 +107,7 @@ const money = (n: number) => n.toLocaleString('uz-UZ') + " so'm";
 
 function OrderDetailModal({ orderId, onClose }: { orderId: string; onClose: () => void }) {
   const qc = useQueryClient();
+  useEscapeKey(true, onClose);
   const q = useQuery<AdminOrderDetail>({
     queryKey: ['admin', 'orders', 'detail', orderId],
     queryFn: async () => (await api.get(`/admin/orders/${orderId}`)).data,
@@ -115,9 +118,10 @@ function OrderDetailModal({ orderId, onClose }: { orderId: string; onClose: () =
     mutationFn: async (exempt: boolean) => {
       await api.patch(`/admin/orders/${orderId}/exempt`, { exempt });
     },
-    onSuccess: () => {
+    onSuccess: (_data, exempt) => {
       qc.invalidateQueries({ queryKey: ['admin', 'orders', 'detail', orderId] });
       qc.invalidateQueries({ queryKey: ['admin', 'orders'] });
+      toast.success(exempt ? 'Buyurtma komissiyasiz qilindi' : 'Komissiyasiz belgisi bekor qilindi');
     },
   });
   const exemptLocked = o ? (o.status === 'delivered' || o.status === 'cancelled') : true;

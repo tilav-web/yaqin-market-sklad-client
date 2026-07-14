@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { api, downloadFile, extractErrorMessage } from '@/lib/api';
+import { toast } from '@/stores/toast';
 
 interface Withdrawal {
   id: string;
@@ -69,9 +70,10 @@ export default function WithdrawalsPage() {
   const process = useMutation({
     mutationFn: ({ id, approve, adminNote }: { id: string; approve: boolean; adminNote?: string }) =>
       api.put(`/admin/balance/withdrawals/${id}/process`, { approve, note: adminNote }),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['admin', 'withdrawals'] });
       setPendingDecision(null);
+      toast.success(vars.approve ? "So'rov tasdiqlandi" : "So'rov rad etildi");
     },
   });
 

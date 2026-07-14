@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+import { toast } from '@/stores/toast';
 
 interface RevenueStats {
   totalRevenue: number;
@@ -86,6 +87,7 @@ export default function AdminPrimePage() {
       setForm(EMPTY_FORM);
       setEditing(null);
       setErr('');
+      toast.success('Tarif saqlandi');
     },
     onError: (e: unknown) => setErr(extractErrorMessage(e)),
   });
@@ -93,7 +95,11 @@ export default function AdminPrimePage() {
   const toggle = useMutation({
     mutationFn: (plan: PrimePlan) =>
       api.put(`/admin/prime/plans/${plan.id}`, { isActive: !plan.isActive }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'prime', 'plans'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'prime', 'plans'] });
+      toast.success('Holat yangilandi');
+    },
+    onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
   const del = useMutation({
@@ -101,7 +107,9 @@ export default function AdminPrimePage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'prime', 'plans'] });
       setPendingDelete(null);
+      toast.success("Tarif o'chirildi");
     },
+    onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
   const [extendingSub, setExtendingSub] = useState<Subscription | null>(null);
@@ -116,6 +124,7 @@ export default function AdminPrimePage() {
       qc.invalidateQueries({ queryKey: ['admin', 'prime', 'subs'] });
       setExtendingSub(null);
       setExtendDays('7');
+      toast.success('Obuna muddati uzaytirildi');
     },
   });
 

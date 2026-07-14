@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, downloadFile, extractErrorMessage } from '@/lib/api';
+import { toast } from '@/stores/toast';
 import { stripHtml } from '@/lib/notif-utils';
 import { useAdminNotifStore } from '@/stores/admin-notif';
 
@@ -231,6 +232,7 @@ export default function UsersAdminPage() {
       if (state.roleFilter === 'admins') params.adminOnly = 'true';
       return (await api.get<UsersPage>('/admin/users', { params })).data;
     },
+    placeholderData: (prev) => prev,
   });
 
   const setStatus = useMutation({
@@ -242,6 +244,7 @@ export default function UsersAdminPage() {
       setStatusErr('');
       setBlockAction(null);
       setBlockReason('');
+      toast.success('Holat yangilandi');
     },
     onError: (e) => setStatusErr(extractErrorMessage(e)),
   });
@@ -254,6 +257,7 @@ export default function UsersAdminPage() {
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
       setAdminAction(null);
       setAdminReason('');
+      toast.success('Admin huquqi yangilandi');
     },
     onError: (e) => setAdminErr(extractErrorMessage(e)),
   });

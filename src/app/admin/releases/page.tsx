@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+import { toast } from '@/stores/toast';
 
 interface Release {
   id: string;
@@ -61,6 +62,7 @@ export default function ReleasesPage() {
       qc.invalidateQueries({ queryKey: ['admin', 'releases'] });
       reset();
       setUploadErr('');
+      toast.success('Yangi versiya yuklandi');
     },
     onError: (e) => setUploadErr(extractErrorMessage(e)),
   });
@@ -73,6 +75,7 @@ export default function ReleasesPage() {
       qc.invalidateQueries({ queryKey: ['admin', 'releases'] });
       setRemoveErr('');
       setPendingRemove(null);
+      toast.success("Versiya o'chirildi");
     },
     onError: (e) => setRemoveErr(extractErrorMessage(e)),
   });

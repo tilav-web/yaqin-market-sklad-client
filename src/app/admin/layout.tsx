@@ -3,16 +3,18 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle, BarChart3, Bell, BookOpen, ClipboardList, CreditCard, FileText, FolderTree,
-  HandCoins, History, Inbox, LogOut, MessageSquareWarning, Settings, Smartphone, Star, Store,
-  TrendingUp, Users, Wallet, type LucideIcon,
+  HandCoins, History, Inbox, LogOut, Menu, MessageSquareWarning, Settings, Smartphone, Star, Store,
+  TrendingUp, Users, Wallet, X, type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { Toaster } from '@/components/admin/toaster';
 import { Button } from '@/components/ui/button';
 import { api, tokenStore } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { useEscapeKey } from '@/lib/use-escape-key';
 
 interface MeUser {
   id: string;
@@ -88,6 +90,53 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
 
 const NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 
+/** Shared between the desktop sidebar and the mobile drawer — same groups, same active/badge logic. */
+function NavGroups({
+  pathname, badgeCounts, onNavigate,
+}: {
+  pathname: string;
+  badgeCounts: Record<string, number>;
+  onNavigate?: () => void;
+}) {
+  return (
+    <>
+      {NAV_GROUPS.map((group) => (
+        <div key={group.title}>
+          <p className="px-3 pb-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {group.title}
+          </p>
+          <div className="space-y-1">
+            {group.items.map((item) => {
+              const isActive = pathname.startsWith(item.href);
+              const badge = item.badgeKey ? badgeCounts[item.badgeKey] : 0;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-sidebar-foreground hover:bg-sidebar-accent',
+                  )}>
+                  <item.icon className="size-4" />
+                  <span className="flex-1">{item.label}</span>
+                  {badge > 0 ? (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[0.65rem] font-bold text-primary-foreground">
+                      {badge > 99 ? '99+' : badge}
+                    </span>
+                  ) : null}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -95,6 +144,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // first client render agree (avoids a hydration mismatch).
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  useEffect(() => setMobileNavOpen(false), [pathname]);
+  useEscapeKey(mobileNavOpen, () => setMobileNavOpen(false));
 
   const meQuery = useQuery({
     queryKey: ['me'],
@@ -165,38 +218,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
-          {NAV_GROUPS.map((group) => (
-            <div key={group.title}>
-              <p className="px-3 pb-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                {group.title}
-              </p>
-              <div className="space-y-1">
-                {group.items.map((item) => {
-                  const isActive = pathname.startsWith(item.href);
-                  const badge = item.badgeKey ? badgeCounts[item.badgeKey] : 0;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                        isActive
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-sidebar-foreground hover:bg-sidebar-accent',
-                      )}>
-                      <item.icon className="size-4" />
-                      <span className="flex-1">{item.label}</span>
-                      {badge > 0 ? (
-                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[0.65rem] font-bold text-primary-foreground">
-                          {badge > 99 ? '99+' : badge}
-                        </span>
-                      ) : null}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+          <NavGroups pathname={pathname} badgeCounts={badgeCounts} />
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
@@ -215,12 +237,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/85 px-6 backdrop-blur">
-          <div>
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Admin
-            </p>
-            <h2 className="text-sm font-semibold text-foreground">{active?.label ?? 'Panel'}</h2>
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border bg-background/85 px-4 backdrop-blur sm:px-6">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="shrink-0 md:hidden"
+              onClick={() => setMobileNavOpen(true)}
+              aria-label="Menyu">
+              <Menu className="size-5" />
+            </Button>
+            <div className="min-w-0">
+              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Admin
+              </p>
+              <h2 className="truncate text-sm font-semibold text-foreground">{active?.label ?? 'Panel'}</h2>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="hidden items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground sm:flex">
@@ -228,14 +260,59 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <span className="h-3 w-px bg-border" />
               <span>{meQuery.data?.phone}</span>
             </div>
-            <Button variant="ghost" size="icon-sm" onClick={logout} className="md:hidden">
-              <LogOut className="size-4" />
-            </Button>
           </div>
         </header>
 
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
+
+      {/* Mobile nav drawer */}
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          <div
+            className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
+            onClick={() => setMobileNavOpen(false)}
+          />
+          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-sidebar-border bg-sidebar shadow-2xl">
+            <div className="flex items-center justify-between gap-3 px-5 py-5">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-base font-extrabold text-primary-foreground shadow-sm">
+                  Y
+                </div>
+                <div className="leading-tight">
+                  <p className="text-sm font-bold text-sidebar-foreground">Yaqin Market</p>
+                  <p className="text-xs text-muted-foreground">Admin panel</p>
+                </div>
+              </div>
+              <button
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent"
+                onClick={() => setMobileNavOpen(false)}
+                aria-label="Yopish">
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
+              <NavGroups pathname={pathname} badgeCounts={badgeCounts} onNavigate={() => setMobileNavOpen(false)} />
+            </nav>
+
+            <div className="border-t border-sidebar-border p-3">
+              <div className="mb-2 rounded-lg bg-sidebar-accent px-3 py-2">
+                <p className="text-xs font-medium text-sidebar-foreground">
+                  {meQuery.data?.name ?? 'Admin'}
+                </p>
+                <p className="text-xs text-muted-foreground">{meQuery.data?.phone}</p>
+              </div>
+              <Button variant="outline" size="sm" className="w-full" onClick={logout}>
+                <LogOut className="size-4" />
+                Chiqish
+              </Button>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      <Toaster />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { api, extractErrorMessage } from '@/lib/api';
+import { toast } from '@/stores/toast';
 
 import { ConfirmDialog } from './confirm-dialog';
 
@@ -35,6 +36,7 @@ export function ResolveComplaintButton({
       invalidateKeys.forEach((key) => qc.invalidateQueries({ queryKey: key }));
       setOpen(false);
       setResolution('');
+      toast.success('Shikoyat hal qilindi');
     },
   });
 

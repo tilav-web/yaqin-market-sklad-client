@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, downloadFile, extractErrorMessage } from '@/lib/api';
+import { toast } from '@/stores/toast';
 
 const ShopsMap = dynamic(() => import('@/components/admin/shops-map'), {
   ssr: false,
@@ -135,6 +136,7 @@ export default function ShopsAdminPage() {
       setActionErr('');
       setPendingToggle(null);
       setToggleReason('');
+      toast.success("Do'kon holati yangilandi");
     },
     onError: (e) => setActionErr(extractErrorMessage(e)),
   });

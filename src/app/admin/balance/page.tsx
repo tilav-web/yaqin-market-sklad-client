@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+import { toast } from '@/stores/toast';
 
 interface SellerBalance {
   id: string;
@@ -90,6 +91,7 @@ export default function AdminBalancePage() {
       qc.invalidateQueries({ queryKey: ['admin', 'txs', sellerId] });
       setPendingAction(null);
       setActionErr('');
+      toast.success('Tranzaksiya hisoblandi');
     },
     onError: (e) => setActionErr(extractErrorMessage(e)),
   });
@@ -101,6 +103,7 @@ export default function AdminBalancePage() {
       qc.invalidateQueries({ queryKey: ['admin', 'txs', sellerId] });
       setPendingAction(null);
       setActionErr('');
+      toast.success('Mablag\' qaytarildi');
     },
     onError: (e) => setActionErr(extractErrorMessage(e)),
   });
@@ -133,6 +136,7 @@ export default function AdminBalancePage() {
       setAdjustOpen(false);
       setAdjustAmount('');
       setAdjustDesc('');
+      toast.success('Balans tuzatildi');
     },
   });
 

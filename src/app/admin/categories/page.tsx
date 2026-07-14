@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+import { useEscapeKey } from '@/lib/use-escape-key';
+import { toast } from '@/stores/toast';
 
 interface Category {
   id: string;
@@ -67,6 +69,8 @@ export default function CategoriesPage() {
   const [formErr, setFormErr] = useState('');
   const [listErr, setListErr] = useState('');
   const [pendingDelete, setPendingDelete] = useState<Category | null>(null);
+  useEscapeKey(form.open, () => dispatch({ type: 'CLOSE' }));
+  useEscapeKey(!!form.editing, () => dispatch({ type: 'CLOSE_EDIT' }));
 
   const treeQuery = useQuery({
     queryKey: ['admin', 'categories', 'all'],
@@ -80,7 +84,12 @@ export default function CategoriesPage() {
         nameRu: form.nameRu, parentId: form.parentId ?? undefined,
       });
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'categories', 'all'] }); dispatch({ type: 'CLOSE' }); setFormErr(''); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'categories', 'all'] });
+      dispatch({ type: 'CLOSE' });
+      setFormErr('');
+      toast.success('Kategoriya yaratildi');
+    },
     onError: (e) => setFormErr(extractErrorMessage(e)),
   });
 
@@ -89,6 +98,7 @@ export default function CategoriesPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'categories', 'all'] });
       setPendingDelete(null);
+      toast.success("Kategoriya o'chirildi");
     },
     onError: (e) => setListErr(extractErrorMessage(e)),
   });
@@ -97,7 +107,10 @@ export default function CategoriesPage() {
     mutationFn: async ({ id, patch }: { id: string; patch: Partial<Category> }) => {
       await api.patch(`/categories/${id}`, patch);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'categories', 'all'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'categories', 'all'] });
+      toast.success('Saqlandi');
+    },
     onError: (e) => setListErr(extractErrorMessage(e)),
   });
 

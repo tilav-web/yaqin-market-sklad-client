@@ -7,6 +7,7 @@ import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { api, downloadFile, extractErrorMessage } from '@/lib/api';
+import { useEscapeKey } from '@/lib/use-escape-key';
 
 interface PreviewRow {
   rowNumber: number;
@@ -45,6 +46,7 @@ export function CatalogImportModal({ onClose }: { onClose: () => void }) {
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [result, setResult] = useState<ConfirmResult | null>(null);
   const [downloadErr, setDownloadErr] = useState('');
+  useEscapeKey(true, onClose);
 
   const downloadTemplate = useMutation({
     mutationFn: () => downloadFile('/admin/catalog/import/template', 'katalog-shabloni.xlsx'),

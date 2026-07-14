@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useEscapeKey } from '@/lib/use-escape-key';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -35,6 +36,7 @@ export function ConfirmDialog({
   open, title, description, confirmLabel = 'Tasdiqlash', cancelLabel = 'Bekor qilish',
   destructive = true, pending, confirmDisabled, error, onConfirm, onCancel, children,
 }: ConfirmDialogProps) {
+  useEscapeKey(open && !pending, onCancel);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">

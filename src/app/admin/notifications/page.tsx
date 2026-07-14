@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+import { toast } from '@/stores/toast';
 import { stripHtml, uploadImageFile } from '@/lib/notif-utils';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { NotifAudience, useAdminNotifStore } from '@/stores/admin-notif';
@@ -154,14 +155,18 @@ function TemplateManager({
         richBody: editFields.richBody || undefined, imageUrl: editFields.imageUrl || undefined,
       });
     },
-    onSuccess: () => { onRefresh(); setEditingId(null); },
+    onSuccess: () => { onRefresh(); setEditingId(null); toast.success('Shablon saqlandi'); },
+    onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
   const [deleteErr, setDeleteErr] = useState('');
 
   const deleteTpl = useMutation({
     mutationFn: async (id: string) => { await api.delete(`/admin/notifications/templates/${id}`); },
-    onSuccess: () => { onRefresh(); setExpandedId(null); setEditingId(null); setPendingDeleteId(null); setDeleteErr(''); },
+    onSuccess: () => {
+      onRefresh(); setExpandedId(null); setEditingId(null); setPendingDeleteId(null); setDeleteErr('');
+      toast.success("Shablon o'chirildi");
+    },
     onError: (e) => setDeleteErr(extractErrorMessage(e)),
   });
 
@@ -337,7 +342,12 @@ function NotificationsInner() {
         richBody: tpl.newRichBody || undefined, imageUrl: tpl.newImageUrl || undefined,
       });
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'templates'] }); tplDispatch({ type: 'CLOSE_NEW' }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'templates'] });
+      tplDispatch({ type: 'CLOSE_NEW' });
+      toast.success('Shablon yaratildi');
+    },
+    onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
   const applyTemplate = useCallback((t: Template) => {

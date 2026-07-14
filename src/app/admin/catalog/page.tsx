@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, downloadFile, extractErrorMessage } from '@/lib/api';
+import { useEscapeKey } from '@/lib/use-escape-key';
+import { toast } from '@/stores/toast';
 
 interface CatalogUsageRow {
   variantId: string;
@@ -21,6 +23,7 @@ interface CatalogUsageRow {
 }
 
 function UsageModal({ product, onClose }: { product: GlobalProduct; onClose: () => void }) {
+  useEscapeKey(true, onClose);
   const usageQ = useQuery<CatalogUsageRow[]>({
     queryKey: ['admin', 'catalog', 'usage', product.id],
     queryFn: async () => (await api.get(`/admin/catalog/${product.id}/usage`)).data,
@@ -164,6 +167,7 @@ export default function CatalogPage() {
   const [filterCat, setFilterCat] = useState('');
   const [page, setPage] = useState(0);
   const [form, dispatch] = useReducer(formReducer, FORM_INIT);
+  useEscapeKey(form.open, () => dispatch({ type: 'CLOSE' }));
   const [formError, setFormError] = useState('');
   const [verifyErr, setVerifyErr] = useState('');
   const [usageProduct, setUsageProduct] = useState<GlobalProduct | null>(null);
@@ -234,6 +238,7 @@ export default function CatalogPage() {
       qc.invalidateQueries({ queryKey: ['admin', 'catalog-stats'] });
       dispatch({ type: 'CLOSE' });
       setFormError('');
+      toast.success('Mahsulot saqlandi');
     },
     onError: (e) => setFormError(extractErrorMessage(e)),
   });

@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+import { toast } from '@/stores/toast';
 
 interface SellerProfile {
   fullName: string | null;
@@ -86,6 +87,7 @@ function SellerProfilePanel({ userId }: { userId: string }) {
       qc.invalidateQueries({ queryKey: ['admin', 'seller-profile', userId] });
       setEditing(false);
       setErr('');
+      toast.success('Sotuvchi profili saqlandi');
     },
     onError: (e) => setErr(extractErrorMessage(e)),
   });

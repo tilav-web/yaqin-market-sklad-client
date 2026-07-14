@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+import { toast } from '@/stores/toast';
 
 interface OverdueDebt {
   id: string;
@@ -53,7 +54,9 @@ export default function AdminDebtsPage() {
       setReasonDrafts((p) => { const next = { ...p }; delete next[sellerId]; return next; });
       setExtendDays((p) => { const next = { ...p }; delete next[sellerId]; return next; });
       setPendingAction(null);
+      toast.success('Qarz kechirildi');
     },
+    onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
   const extend = useMutation({
@@ -64,7 +67,9 @@ export default function AdminDebtsPage() {
       setReasonDrafts((p) => { const next = { ...p }; delete next[sellerId]; return next; });
       setExtendDays((p) => { const next = { ...p }; delete next[sellerId]; return next; });
       setPendingAction(null);
+      toast.success('Muddat uzaytirildi');
     },
+    onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
   const debts = debtsQ.data ?? [];

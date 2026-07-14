@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+import { useEscapeKey } from '@/lib/use-escape-key';
+import { toast } from '@/stores/toast';
 
 interface SellerApplication {
   id: string;
@@ -82,6 +84,8 @@ export default function ApplicationsPage() {
   const [approvingApp, setApprovingApp] = useState<SellerApplication | null>(null);
   const [approveForm, setApproveForm] = useState<ApproveForm>(EMPTY_APPROVE);
   const [approveErr, setApproveErr] = useState('');
+  useEscapeKey(!!rejectingId, () => { setRejectingId(null); setRejectReason(''); setRejectErr(''); });
+  useEscapeKey(!!approvingApp, () => { setApprovingApp(null); setApproveErr(''); });
 
   const appsQuery = useQuery({
     queryKey: ['admin', 'applications'],
@@ -115,6 +119,7 @@ export default function ApplicationsPage() {
       setApprovingApp(null);
       setApproveForm(EMPTY_APPROVE);
       setApproveErr('');
+      toast.success('Seller tasdiqlandi');
     },
     onError: (e: unknown) => setApproveErr(extractErrorMessage(e)),
   });
@@ -128,6 +133,7 @@ export default function ApplicationsPage() {
       setRejectReason('');
       setRejectErr('');
       qc.invalidateQueries({ queryKey: ['admin', 'applications'] });
+      toast.success('Ariza rad etildi');
     },
     onError: (e: unknown) => setRejectErr(extractErrorMessage(e)),
   });
