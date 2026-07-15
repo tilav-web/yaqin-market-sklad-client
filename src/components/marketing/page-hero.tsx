@@ -1,8 +1,6 @@
-import { Badge } from '@/components/ui/badge';
-import { Zap } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
-/** Compact hero banner for sub-pages (users/sellers) — same gradient
- * language as the home hero, smaller footprint. */
+/** Compact premium hero banner for sub-pages (users/sellers) */
 export function PageHero({
   badge,
   title,
@@ -13,20 +11,16 @@ export function PageHero({
   subtitle: string;
 }) {
   return (
-    <section className="relative overflow-hidden">
-      <div
-        aria-hidden
-        className="animate-gradient-shift pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(120deg,color-mix(in_oklch,var(--color-primary)_18%,transparent),color-mix(in_oklch,orange_14%,transparent),color-mix(in_oklch,var(--color-primary)_10%,transparent))]"
-      />
-      <div className="mx-auto max-w-4xl px-5 py-16 text-center sm:px-8 sm:py-20">
-        <Badge variant="primary" className="mb-5">
-          <Zap />
+    <section className="relative overflow-hidden border-b border-zinc-200/50 bg-gradient-to-b from-zinc-50 to-white">
+      <div className="mx-auto max-w-4xl px-5 py-16 text-center sm:px-8 sm:py-24">
+        <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50/50 px-3 py-1 text-xs font-semibold text-emerald-700 backdrop-blur-sm">
+          <Sparkles className="size-3.5 text-emerald-600" />
           {badge}
-        </Badge>
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+        </div>
+        <h1 className="font-heading text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl">
           {title}
         </h1>
-        <p className="mx-auto mt-5 max-w-2xl text-pretty text-lg text-muted-foreground">
+        <p className="mx-auto mt-5 max-w-2xl text-pretty text-base leading-relaxed text-zinc-500 sm:text-lg">
           {subtitle}
         </p>
       </div>

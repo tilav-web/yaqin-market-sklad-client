@@ -33,16 +33,16 @@ export function SellersContent() {
         steps={t.sellers.steps}
       />
 
-      <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-24">
+      <section className="mx-auto max-w-6xl px-5 py-24 sm:px-8 sm:py-32">
         <SectionHeading title={t.sellers.reqTitle} />
-        <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2">
           <Reveal>
-            <Card className="h-full p-7">
-              <h3 className="text-base font-bold text-foreground">{t.sellers.reqMinimalTitle}</h3>
-              <ul className="mt-4 space-y-3">
+            <Card className="h-full p-8 border border-zinc-200/80 bg-white rounded-3xl shadow-sm">
+              <h3 className="font-heading text-base font-semibold text-zinc-900">{t.sellers.reqMinimalTitle}</h3>
+              <ul className="mt-5 space-y-4">
                 {t.sellers.reqMinimalItems.map((item) => (
-                  <li key={item} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <li key={item} className="flex items-start gap-3 text-sm text-zinc-500">
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
                     {item}
                   </li>
                 ))}
@@ -50,12 +50,12 @@ export function SellersContent() {
             </Card>
           </Reveal>
           <Reveal delay={100}>
-            <Card className="h-full p-7">
-              <h3 className="text-base font-bold text-foreground">{t.sellers.reqApprovalTitle}</h3>
-              <ul className="mt-4 space-y-3">
+            <Card className="h-full p-8 border border-zinc-200/80 bg-white rounded-3xl shadow-sm">
+              <h3 className="font-heading text-base font-semibold text-zinc-900">{t.sellers.reqApprovalTitle}</h3>
+              <ul className="mt-5 space-y-4">
                 {t.sellers.reqApprovalItems.map((item) => (
-                  <li key={item} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
+                  <li key={item} className="flex items-start gap-3 text-sm text-zinc-500">
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
                     {item}
                   </li>
                 ))}
@@ -64,15 +64,15 @@ export function SellersContent() {
           </Reveal>
         </div>
 
-        <Reveal delay={150} className="mt-6">
-          <Card className="overflow-hidden bg-gradient-to-br from-primary/10 to-orange-400/10 p-7">
-            <div className="flex items-start gap-4">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-orange-500 text-primary-foreground shadow-sm">
+        <Reveal delay={150} className="mt-8">
+          <Card className="overflow-hidden border border-emerald-100/60 bg-gradient-to-br from-emerald-50/45 to-teal-50/20 p-8 rounded-3xl shadow-sm">
+            <div className="flex flex-col sm:flex-row items-start gap-5">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/10">
                 <Percent className="size-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-foreground">{t.sellers.commissionTitle}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                <h3 className="font-heading text-base font-semibold text-zinc-900">{t.sellers.commissionTitle}</h3>
+                <p className="mt-2.5 text-sm leading-relaxed text-zinc-500">
                   {t.sellers.commissionDesc}
                 </p>
               </div>
@@ -86,11 +86,11 @@ export function SellersContent() {
         items={t.sellers.warehouse.map((w, i) => ({ ...w, icon: WAREHOUSE_ICONS[i] }))}
       />
 
-      <section className="mx-auto max-w-3xl px-5 pb-4 text-center sm:px-8">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+      <section className="mx-auto max-w-3xl px-5 pb-8 text-center sm:px-8">
+        <h2 className="font-heading text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
           {t.sellers.ctaTitle}
         </h2>
-        <p className="mt-3 text-pretty text-muted-foreground">{t.sellers.ctaDesc}</p>
+        <p className="mt-4 text-pretty text-sm leading-relaxed text-zinc-500">{t.sellers.ctaDesc}</p>
       </section>
 
       <MarketingDownload />

@@ -1,8 +1,7 @@
 'use client';
 
-import { MapPin, Truck, Zap } from 'lucide-react';
+import { Sparkles, MapPin, Truck, Zap } from 'lucide-react';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useT } from '@/lib/i18n/use-t';
 
@@ -10,56 +9,57 @@ export function MarketingHero() {
   const { t } = useT();
 
   return (
-    <section className="relative overflow-hidden">
+    <section className="relative overflow-hidden border-b border-zinc-200/40 bg-gradient-to-b from-zinc-50/60 via-white to-zinc-50/30">
+      {/* Soft decorative background glows */}
       <div
         aria-hidden
-        className="animate-gradient-shift pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(120deg,color-mix(in_oklch,var(--color-primary)_22%,transparent),color-mix(in_oklch,orange_16%,transparent),color-mix(in_oklch,var(--color-primary)_14%,transparent))]"
-      />
-      <div
-        aria-hidden
-        className="animate-float pointer-events-none absolute -top-10 right-[8%] hidden size-24 rounded-3xl bg-primary/15 blur-2xl sm:block"
-      />
-      <div
-        aria-hidden
-        className="animate-float pointer-events-none absolute top-32 left-[6%] hidden size-16 rounded-full bg-orange-400/20 blur-xl sm:block"
-        style={{ animationDelay: '1.5s' }}
+        className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[500px] bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.08),transparent_50%)]"
       />
 
-      <div className="mx-auto max-w-6xl px-5 py-20 text-center sm:px-8 sm:py-28">
-        <Badge variant="primary" className="mb-6">
-          <Zap />
+      <div className="relative mx-auto max-w-6xl px-5 py-24 text-center sm:px-8 sm:py-32">
+        <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50/50 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 backdrop-blur-sm">
+          <Sparkles className="size-3.5 text-emerald-600" />
           {t.home.badge}
-        </Badge>
-        <h1 className="mx-auto max-w-3xl text-balance text-4xl font-extrabold leading-[1.1] tracking-tight text-foreground sm:text-6xl">
-          {t.home.title1} <span className="text-primary">{t.home.titleHighlight}</span>{' '}
+        </div>
+        <h1 className="mx-auto max-w-4xl font-heading text-4xl font-bold leading-[1.1] tracking-tight text-zinc-900 sm:text-6xl md:text-7xl">
+          {t.home.title1} <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">{t.home.titleHighlight}</span>{' '}
           {t.home.title2}
         </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-muted-foreground">
+        <p className="mx-auto mt-8 max-w-2xl text-pretty text-base leading-relaxed text-zinc-500 sm:text-lg">
           {t.home.subtitle}
         </p>
-        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <a href="#yuklab-olish">
             <Button
               size="lg"
-              className="h-12 bg-gradient-to-r from-primary to-orange-500 px-8 text-base shadow-lg shadow-primary/25 hover:opacity-90">
+              className="h-12 rounded-full bg-zinc-950 px-8 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800">
               {t.home.ctaPrimary}
             </Button>
           </a>
           <a href="#qanday-ishlaydi">
-            <Button variant="outline" size="lg" className="h-12 px-8 text-base">
+            <Button variant="outline" size="lg" className="h-12 rounded-full border-zinc-200 px-8 text-sm font-semibold text-zinc-700 shadow-sm hover:bg-zinc-50">
               {t.home.ctaSecondary}
             </Button>
           </a>
         </div>
-        <div className="mx-auto mt-12 flex max-w-xl flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-muted-foreground">
+        <div className="mx-auto mt-16 flex max-w-2xl flex-wrap items-center justify-center gap-x-8 gap-y-4 text-xs font-medium text-zinc-400">
           <span className="inline-flex items-center gap-2">
-            <MapPin className="size-4 text-primary" /> {t.home.trustMap}
+            <span className="flex size-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+              <MapPin className="size-3.5" />
+            </span>
+            {t.home.trustMap}
           </span>
           <span className="inline-flex items-center gap-2">
-            <Truck className="size-4 text-primary" /> {t.home.trustDelivery}
+            <span className="flex size-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+              <Truck className="size-3.5" />
+            </span>
+            {t.home.trustDelivery}
           </span>
           <span className="inline-flex items-center gap-2">
-            <Zap className="size-4 text-primary" /> {t.home.trustLang}
+            <span className="flex size-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+              <Zap className="size-3.5" />
+            </span>
+            {t.home.trustLang}
           </span>
         </div>
       </div>

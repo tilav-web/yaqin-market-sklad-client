@@ -43,29 +43,29 @@ export function MarketingContact() {
   }
 
   return (
-    <section id="boglanish" className="mx-auto max-w-3xl px-5 py-20 sm:px-8 sm:py-24">
+    <section id="boglanish" className="mx-auto max-w-3xl px-5 py-24 sm:px-8 sm:py-32">
       <div className="mx-auto max-w-xl text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+        <h2 className="font-heading text-3xl font-bold tracking-tight text-zinc-900 sm:text-4xl">
           {t.contact.title}
         </h2>
-        <p className="mt-4 text-pretty text-muted-foreground">{t.contact.desc}</p>
+        <p className="mt-4 text-pretty text-sm leading-relaxed text-zinc-500">{t.contact.desc}</p>
       </div>
 
-      <Card className="mt-10 p-6 sm:p-8">
+      <Card className="mt-12 border border-zinc-200/80 bg-white p-8 sm:p-10 rounded-3xl shadow-sm">
         {submit.isSuccess ? (
           <div className="flex flex-col items-center gap-4 py-8 text-center">
-            <div className="flex size-14 items-center justify-center rounded-full bg-success/10 text-success">
-              <CheckCircle2 className="size-8" />
+            <div className="flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shadow-sm">
+              <CheckCircle2 className="size-6" />
             </div>
-            <p className="text-base font-semibold text-foreground">{t.contact.success}</p>
-            <Button variant="outline" onClick={() => submit.reset()}>
+            <p className="font-heading text-base font-semibold text-zinc-900">{t.contact.success}</p>
+            <Button variant="outline" className="rounded-full mt-2" onClick={() => submit.reset()}>
               {t.contact.newMsg}
             </Button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <label htmlFor="contact-name" className="text-sm font-medium text-foreground">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <label htmlFor="contact-name" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
                 {t.contact.name}
               </label>
               <Input
@@ -73,12 +73,12 @@ export function MarketingContact() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t.contact.namePh}
-                className="h-11"
+                className="h-11 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none transition-colors placeholder:text-zinc-400 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/20"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="contact-phone" className="text-sm font-medium text-foreground">
+            <div className="space-y-2">
+              <label htmlFor="contact-phone" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
                 {t.contact.phone}
               </label>
               <Input
@@ -87,12 +87,12 @@ export function MarketingContact() {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder={t.contact.phonePh}
                 inputMode="tel"
-                className="h-11"
+                className="h-11 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none transition-colors placeholder:text-zinc-400 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/20"
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="contact-message" className="text-sm font-medium text-foreground">
+            <div className="space-y-2">
+              <label htmlFor="contact-message" className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
                 {t.contact.message}
               </label>
               <textarea
@@ -101,17 +101,17 @@ export function MarketingContact() {
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder={t.contact.messagePh}
                 rows={4}
-                className="w-full min-w-0 resize-y rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-50"
+                className="w-full min-w-0 resize-y rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-zinc-400 focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500/20 disabled:opacity-50"
               />
             </div>
 
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
             <Button
               type="submit"
               size="lg"
               disabled={!canSubmit}
-              className="h-11 w-full bg-gradient-to-r from-primary to-orange-500 text-base shadow-lg shadow-primary/25 hover:opacity-90">
+              className="h-12 w-full rounded-full bg-zinc-950 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800">
               <Send className="size-4" />
               {submit.isPending ? t.contact.submitting : t.contact.submit}
             </Button>
