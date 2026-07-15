@@ -30,17 +30,17 @@ export function MarketingFooter() {
             <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">{t.footer.linksTitle}</h3>
             <ul className="mt-4 space-y-3 text-sm text-zinc-500">
               <li>
-                <Link href="/" className="transition-colors duration-200 hover:text-emerald-600">
+                <Link href="/" className="transition-colors duration-200 hover:text-primary">
                   {t.nav.home}
                 </Link>
               </li>
               <li>
-                <Link href="/foydalanuvchilar" className="transition-colors duration-200 hover:text-emerald-600">
+                <Link href="/foydalanuvchilar" className="transition-colors duration-200 hover:text-primary">
                   {t.nav.users}
                 </Link>
               </li>
               <li>
-                <Link href="/sotuvchilar" className="transition-colors duration-200 hover:text-emerald-600">
+                <Link href="/sotuvchilar" className="transition-colors duration-200 hover:text-primary">
                   {t.nav.sellers}
                 </Link>
               </li>
@@ -51,13 +51,13 @@ export function MarketingFooter() {
             <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">{t.footer.contactTitle}</h3>
             <ul className="mt-4 space-y-3 text-sm text-zinc-500">
               <li className="flex items-center gap-2.5">
-                <Phone className="size-4 text-emerald-600" /> +998 XX XXX XX XX
+                <Phone className="size-4 text-primary" /> +998 XX XXX XX XX
               </li>
               <li className="flex items-center gap-2.5">
-                <Mail className="size-4 text-emerald-600" /> info@yaqin-market.uz
+                <Mail className="size-4 text-primary" /> info@yaqin-market.uz
               </li>
               <li className="flex items-center gap-2.5">
-                <MessageCircle className="size-4 text-emerald-600" /> @yaqinmarket
+                <MessageCircle className="size-4 text-primary" /> @yaqinmarket
               </li>
             </ul>
           </div>
@@ -68,10 +68,10 @@ export function MarketingFooter() {
             © {new Date().getFullYear()} Yaqin Market. {t.footer.rights}
           </p>
           <div className="flex items-center gap-6">
-            <Link href="/shartlar" className="transition-colors duration-200 hover:text-emerald-600">
+            <Link href="/shartlar" className="transition-colors duration-200 hover:text-primary">
               {t.footer.terms}
             </Link>
-            <Link href="/maxfiylik" className="transition-colors duration-200 hover:text-emerald-600">
+            <Link href="/maxfiylik" className="transition-colors duration-200 hover:text-primary">
               {t.footer.privacy}
             </Link>
           </div>

@@ -25,7 +25,7 @@ export function Faq({ title, items }: { title: string; items: FaqItem[] }) {
               <div
                 className={cn(
                   'overflow-hidden rounded-2xl border bg-white transition-all duration-300 shadow-sm',
-                  open ? 'border-emerald-500/30 ring-1 ring-emerald-500/10' : 'border-zinc-200/80 hover:border-zinc-300',
+                  open ? 'border-primary/30 ring-1 ring-primary/10' : 'border-zinc-200/80 hover:border-zinc-300',
                 )}>
                 <button
                   type="button"
@@ -35,7 +35,7 @@ export function Faq({ title, items }: { title: string; items: FaqItem[] }) {
                   <ChevronDown
                     className={cn(
                       'size-4 shrink-0 text-zinc-400 transition-transform duration-300',
-                      open && 'rotate-180 text-emerald-600',
+                      open && 'rotate-180 text-primary',
                     )}
                   />
                 </button>

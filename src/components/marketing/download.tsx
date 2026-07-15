@@ -40,7 +40,7 @@ export function MarketingDownload() {
       <div className="mx-auto max-w-4xl px-5 sm:px-8">
         <Card className="overflow-hidden border border-zinc-200/80 bg-white p-8 sm:p-12 rounded-3xl shadow-sm">
           <div className="flex flex-col items-center gap-8 text-center md:flex-row md:text-left">
-            <div className="flex size-20 shrink-0 items-center justify-center rounded-3xl bg-emerald-50 text-emerald-600 shadow-sm">
+            <div className="flex size-20 shrink-0 items-center justify-center rounded-3xl bg-primary/10 text-primary shadow-sm">
               <Smartphone className="size-9" />
             </div>
             <div className="flex-1">
@@ -54,7 +54,7 @@ export function MarketingDownload() {
                   <a href={`${API_URL}/api/app-releases/latest/download`} download>
                     <Button
                       size="lg"
-                      className="h-12 rounded-full bg-zinc-950 px-8 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800">
+                      className="h-12 rounded-full bg-primary px-8 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
                       <Download className="size-4" />
                       {t.download.ctaReady}
                     </Button>

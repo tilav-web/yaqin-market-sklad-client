@@ -54,7 +54,7 @@ export function MarketingContact() {
       <Card className="mt-12 border border-zinc-200/80 bg-white p-8 sm:p-10 rounded-3xl shadow-sm">
         {submit.isSuccess ? (
           <div className="flex flex-col items-center gap-4 py-8 text-center">
-            <div className="flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shadow-sm">
+            <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary shadow-sm">
               <CheckCircle2 className="size-6" />
             </div>
             <p className="font-heading text-base font-semibold text-zinc-900">{t.contact.success}</p>
@@ -73,7 +73,7 @@ export function MarketingContact() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t.contact.namePh}
-                className="h-11 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none transition-colors placeholder:text-zinc-400 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/20"
+                className="h-11 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none transition-colors placeholder:text-zinc-400 focus-visible:border-primary focus-visible:ring-primary/20"
               />
             </div>
 
@@ -87,7 +87,7 @@ export function MarketingContact() {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder={t.contact.phonePh}
                 inputMode="tel"
-                className="h-11 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none transition-colors placeholder:text-zinc-400 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/20"
+                className="h-11 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm outline-none transition-colors placeholder:text-zinc-400 focus-visible:border-primary focus-visible:ring-primary/20"
               />
             </div>
 
@@ -101,7 +101,7 @@ export function MarketingContact() {
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder={t.contact.messagePh}
                 rows={4}
-                className="w-full min-w-0 resize-y rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-zinc-400 focus-visible:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500/20 disabled:opacity-50"
+                className="w-full min-w-0 resize-y rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-zinc-400 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:opacity-50"
               />
             </div>
 
@@ -111,7 +111,7 @@ export function MarketingContact() {
               type="submit"
               size="lg"
               disabled={!canSubmit}
-              className="h-12 w-full rounded-full bg-zinc-950 text-sm font-semibold text-white shadow-sm hover:bg-zinc-800">
+              className="h-12 w-full rounded-full bg-primary text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90">
               <Send className="size-4" />
               {submit.isPending ? t.contact.submitting : t.contact.submit}
             </Button>

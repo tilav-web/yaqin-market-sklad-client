@@ -13,8 +13,8 @@ export function PageHero({
   return (
     <section className="relative overflow-hidden border-b border-zinc-200/50 bg-gradient-to-b from-zinc-50 to-white">
       <div className="mx-auto max-w-4xl px-5 py-16 text-center sm:px-8 sm:py-24">
-        <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50/50 px-3 py-1 text-xs font-semibold text-emerald-700 backdrop-blur-sm">
-          <Sparkles className="size-3.5 text-emerald-600" />
+        <div className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary backdrop-blur-sm">
+          <Sparkles className="size-3.5 text-primary" />
           {badge}
         </div>
         <h1 className="font-heading text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl">

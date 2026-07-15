@@ -42,7 +42,7 @@ export function SellersContent() {
               <ul className="mt-5 space-y-4">
                 {t.sellers.reqMinimalItems.map((item) => (
                   <li key={item} className="flex items-start gap-3 text-sm text-zinc-500">
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
                     {item}
                   </li>
                 ))}
@@ -55,7 +55,7 @@ export function SellersContent() {
               <ul className="mt-5 space-y-4">
                 {t.sellers.reqApprovalItems.map((item) => (
                   <li key={item} className="flex items-start gap-3 text-sm text-zinc-500">
-                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                    <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-primary" />
                     {item}
                   </li>
                 ))}
@@ -65,9 +65,9 @@ export function SellersContent() {
         </div>
 
         <Reveal delay={150} className="mt-8">
-          <Card className="overflow-hidden border border-emerald-100/60 bg-gradient-to-br from-emerald-50/45 to-teal-50/20 p-8 rounded-3xl shadow-sm">
+          <Card className="overflow-hidden border border-primary/15 bg-gradient-to-br from-primary/8 to-orange-50/50 p-8 rounded-3xl shadow-sm">
             <div className="flex flex-col sm:flex-row items-start gap-5">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-sm shadow-emerald-500/10">
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-orange-500 text-primary-foreground shadow-sm shadow-primary/10">
                 <Percent className="size-5" />
               </div>
               <div>

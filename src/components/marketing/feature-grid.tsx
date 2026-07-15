@@ -39,8 +39,8 @@ export function FeatureGrid({
         )}>
         {items.map((item, i) => (
           <Reveal key={item.title} delay={(i % 3) * 80}>
-            <Card className="group h-full p-8 border border-zinc-200/80 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/30 hover:shadow-[0_12px_30px_-10px_rgba(16,185,129,0.12)]">
-              <div className="flex size-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-colors duration-300 group-hover:bg-emerald-600 group-hover:text-white">
+            <Card className="group h-full p-8 border border-zinc-200/80 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_12px_30px_-10px_color-mix(in_oklch,var(--color-primary)_35%,transparent)]">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors duration-300 group-hover:bg-primary group-hover:text-primary-foreground">
                 <item.icon className="size-5" />
               </div>
               <h3 className="mt-5 font-heading text-base font-semibold text-zinc-900">{item.title}</h3>

@@ -28,7 +28,7 @@ export function StepList({
       <div className="mt-16 grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
         {steps.map((step, i) => (
           <Reveal key={step.title} delay={i * 100} className="relative">
-            <div className="flex size-10 items-center justify-center rounded-full bg-zinc-950 font-heading text-sm font-semibold text-white shadow-sm">
+            <div className="flex size-10 items-center justify-center rounded-full bg-primary font-heading text-sm font-semibold text-primary-foreground shadow-sm">
               {i + 1}
             </div>
             <h3 className="mt-5 font-heading text-base font-semibold text-zinc-900">{step.title}</h3>

@@ -73,7 +73,7 @@ export function MarketingNav() {
               className={cn(
                 'rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-200',
                 pathname === link.href
-                  ? 'text-emerald-600 font-semibold'
+                  ? 'text-primary font-semibold'
                   : 'text-zinc-500 hover:text-zinc-900',
               )}>
               {link.label}
@@ -84,7 +84,7 @@ export function MarketingNav() {
         <div className="hidden items-center gap-4 md:flex">
           <LangSwitch />
           <Link href="/#yuklab-olish">
-            <Button size="sm" className="rounded-full bg-zinc-950 px-4 text-xs font-semibold text-white hover:bg-zinc-800">
+            <Button size="sm" className="rounded-full bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
               {t.nav.download}
             </Button>
           </Link>
@@ -110,7 +110,7 @@ export function MarketingNav() {
                 className={cn(
                   'rounded-xl px-4 py-3 text-sm font-semibold transition-colors duration-200',
                   pathname === link.href
-                    ? 'bg-emerald-50 text-emerald-700'
+                    ? 'bg-primary/10 text-primary'
                     : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900',
                 )}>
                 {link.label}
@@ -120,7 +120,7 @@ export function MarketingNav() {
           <div className="mt-5 flex flex-col gap-4">
             <LangSwitch compact />
             <Link href="/#yuklab-olish" onClick={() => setOpen(false)}>
-              <Button className="w-full rounded-xl bg-zinc-950 font-semibold text-white hover:bg-zinc-800">
+              <Button className="w-full rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary/90">
                 {t.nav.download}
               </Button>
             </Link>

@@ -17,12 +17,12 @@ export function DualCta() {
         <Reveal>
           <Link
             href="/foydalanuvchilar"
-            className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-zinc-200/80 bg-white p-8 sm:p-10 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/30 hover:shadow-xl">
+            className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-zinc-200/80 bg-white p-8 sm:p-10 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-xl">
             <div
               aria-hidden
-              className="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full bg-emerald-50/40 transition-transform duration-300 group-hover:scale-125"
+              className="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full bg-primary/8 transition-transform duration-300 group-hover:scale-125"
             />
-            <div className="relative flex size-14 items-center justify-center rounded-2xl bg-zinc-950 text-white shadow-sm">
+            <div className="relative flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
               <ShoppingBag className="size-6" />
             </div>
             <h3 className="relative mt-8 font-heading text-xl font-semibold text-zinc-900">
@@ -31,7 +31,7 @@ export function DualCta() {
             <p className="relative mt-3 flex-1 text-sm leading-relaxed text-zinc-500">
               {t.home.dualCustomerDesc}
             </p>
-            <span className="relative mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 transition-colors group-hover:text-emerald-700">
+            <span className="relative mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition-colors group-hover:text-primary/80">
               {t.home.dualCustomerCta}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
             </span>
@@ -41,12 +41,12 @@ export function DualCta() {
         <Reveal delay={100}>
           <Link
             href="/sotuvchilar"
-            className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-zinc-200/80 bg-white p-8 sm:p-10 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/30 hover:shadow-xl">
+            className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-zinc-200/80 bg-white p-8 sm:p-10 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-xl">
             <div
               aria-hidden
-              className="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full bg-emerald-50/40 transition-transform duration-300 group-hover:scale-125"
+              className="pointer-events-none absolute -top-16 -right-16 size-40 rounded-full bg-primary/8 transition-transform duration-300 group-hover:scale-125"
             />
-            <div className="relative flex size-14 items-center justify-center rounded-2xl bg-zinc-950 text-white shadow-sm">
+            <div className="relative flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
               <Store className="size-6" />
             </div>
             <h3 className="relative mt-8 font-heading text-xl font-semibold text-zinc-900">
@@ -55,7 +55,7 @@ export function DualCta() {
             <p className="relative mt-3 flex-1 text-sm leading-relaxed text-zinc-500">
               {t.home.dualSellerDesc}
             </p>
-            <span className="relative mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 transition-colors group-hover:text-emerald-700">
+            <span className="relative mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition-colors group-hover:text-primary/80">
               {t.home.dualSellerCta}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
             </span>
