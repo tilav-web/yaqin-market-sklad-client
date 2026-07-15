@@ -1,6 +1,7 @@
 'use client';
 
 import { Menu, X } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -53,11 +54,15 @@ export function MarketingNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3 sm:px-8">
-        <Link href="/" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
-          <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-orange-500 text-lg font-extrabold text-primary-foreground shadow-sm">
-            Y
-          </div>
-          <span className="text-base font-bold tracking-tight text-foreground">Yaqin Market</span>
+        <Link href="/" className="flex items-center" onClick={() => setOpen(false)}>
+          <Image
+            src="/logo-web.png"
+            alt="Yaqin Market"
+            width={923}
+            height={397}
+            priority
+            className="h-9 w-auto sm:h-10"
+          />
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">

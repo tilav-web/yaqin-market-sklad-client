@@ -1,6 +1,7 @@
 'use client';
 
 import { Mail, MessageCircle, Phone } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 
 import { useT } from '@/lib/i18n/use-t';
@@ -13,13 +14,14 @@ export function MarketingFooter() {
       <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-3">
           <div>
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-orange-500 text-lg font-extrabold text-primary-foreground shadow-sm">
-                Y
-              </div>
-              <span className="text-base font-bold tracking-tight text-foreground">
-                Yaqin Market
-              </span>
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/logo-web.png"
+                alt="Yaqin Market"
+                width={923}
+                height={397}
+                className="h-9 w-auto"
+              />
             </Link>
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">{t.footer.tagline}</p>
           </div>
