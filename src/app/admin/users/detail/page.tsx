@@ -203,7 +203,15 @@ interface AdminUser {
 }
 interface UsersPage { items: AdminUser[]; total: number }
 
-type OrderStatus = 'new' | 'accepted' | 'preparing' | 'delivering' | 'delivered' | 'cancelled';
+type OrderStatus =
+  | 'new'
+  | 'accepted'
+  | 'preparing'
+  | 'delivering'
+  | 'delivered'
+  | 'cancelled'
+  | 'seller_no_response'
+  | 'seller_rejected';
 
 interface AdminOrderItem {
   id: string;
@@ -236,6 +244,8 @@ const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   delivering: 'Yetkazilmoqda',
   delivered: 'Yetkazib berilgan',
   cancelled: 'Bekor qilingan',
+  seller_no_response: "Do'kon javob bermadi",
+  seller_rejected: "Do'kon rad etdi",
 };
 
 const ORDER_STATUS_VARIANT: Record<OrderStatus, 'neutral' | 'primary' | 'success' | 'warning' | 'danger'> = {
@@ -245,6 +255,8 @@ const ORDER_STATUS_VARIANT: Record<OrderStatus, 'neutral' | 'primary' | 'success
   delivering: 'warning',
   delivered: 'success',
   cancelled: 'danger',
+  seller_no_response: 'warning',
+  seller_rejected: 'danger',
 };
 
 const money = (n: number) => n.toLocaleString('uz-UZ') + " so'm";

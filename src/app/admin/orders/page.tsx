@@ -13,7 +13,15 @@ import { api, downloadFile, extractErrorMessage } from '@/lib/api';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { toast } from '@/stores/toast';
 
-type OrderStatus = 'new' | 'accepted' | 'preparing' | 'delivering' | 'delivered' | 'cancelled';
+type OrderStatus =
+  | 'new'
+  | 'accepted'
+  | 'preparing'
+  | 'delivering'
+  | 'delivered'
+  | 'cancelled'
+  | 'seller_no_response'
+  | 'seller_rejected';
 type PaymentMethod = 'cash' | 'click_online';
 type PaymentStatus = 'not_required' | 'pending' | 'paid' | 'failed';
 type Channel = 'delivery' | 'in_store';
@@ -71,6 +79,8 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   delivering: 'Yetkazilmoqda',
   delivered: 'Yetkazib berilgan',
   cancelled: 'Bekor qilingan',
+  seller_no_response: "Do'kon javob bermadi",
+  seller_rejected: "Do'kon rad etdi",
 };
 const STATUS_VARIANT: Record<OrderStatus, 'neutral' | 'primary' | 'success' | 'warning' | 'danger'> = {
   new: 'neutral',
@@ -79,6 +89,8 @@ const STATUS_VARIANT: Record<OrderStatus, 'neutral' | 'primary' | 'success' | 'w
   delivering: 'warning',
   delivered: 'success',
   cancelled: 'danger',
+  seller_no_response: 'warning',
+  seller_rejected: 'danger',
 };
 const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   not_required: 'Naqd',
@@ -101,6 +113,8 @@ const STATUS_FILTERS: { key: OrderStatus | ''; label: string }[] = [
   { key: 'delivering', label: 'Yetkazilmoqda' },
   { key: 'delivered', label: 'Yetkazilgan' },
   { key: 'cancelled', label: 'Bekor qilingan' },
+  { key: 'seller_no_response', label: "Do'kon javob bermadi" },
+  { key: 'seller_rejected', label: "Do'kon rad etdi" },
 ];
 
 const money = (n: number) => n.toLocaleString('uz-UZ') + " so'm";
@@ -124,7 +138,9 @@ function OrderDetailModal({ orderId, onClose }: { orderId: string; onClose: () =
       toast.success(exempt ? 'Buyurtma komissiyasiz qilindi' : 'Komissiyasiz belgisi bekor qilindi');
     },
   });
-  const exemptLocked = o ? (o.status === 'delivered' || o.status === 'cancelled') : true;
+  const exemptLocked = o
+    ? ['delivered', 'cancelled', 'seller_no_response', 'seller_rejected'].includes(o.status)
+    : true;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
