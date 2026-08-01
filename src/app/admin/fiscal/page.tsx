@@ -1,8 +1,8 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp, Pencil, Plus, RefreshCw, ReceiptText, Tags, TriangleAlert } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronDown, ChevronUp, Pencil, Plus, RefreshCw, ReceiptText, Sparkles, Tags, TriangleAlert } from 'lucide-react';
+import { Fragment, useState } from 'react';
 
 import { PageHeader, StatPill } from '@/components/admin/page-header';
 import { Pagination } from '@/components/admin/pagination';
@@ -22,6 +22,7 @@ interface FiscalReceiptLine {
   mxikCode: string | null;
   packageCode: string | null;
   markingRequired: boolean;
+  markingCodes: string[];
   quantity: number;
   unitPrice: number;
   lineTotal: number;
@@ -244,7 +245,12 @@ function ReceiptRow({
                       <td className="py-1">
                         {l.productName}
                         {l.markingRequired && (
-                          <Badge variant="warning" className="ml-1">markirovka</Badge>
+                          <Badge
+                            variant={(l.markingCodes?.length ?? 0) >= l.quantity ? 'success' : 'warning'}
+                            className="ml-1"
+                          >
+                            markirovka {l.markingCodes?.length ?? 0}/{l.quantity}
+                          </Badge>
                         )}
                       </td>
                       <td className="py-1 font-mono">{l.mxikCode ?? <span className="text-amber-600">yo&apos;q</span>}</td>
@@ -452,10 +458,54 @@ function TaxCategoriesSection() {
 
 /* ─── MXIK biriktirilmagan mahsulotlar ─── */
 
+interface TasnifEntry {
+  mxikCode: string;
+  name: string;
+  groupName: string | null;
+  internationalCode: string | null;
+  unitCode: string | null;
+}
+
 function MissingProductsSection() {
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Record<string, string>>({});
+  const [suggestions, setSuggestions] = useState<
+    Record<string, { loading: boolean; matchedBy?: 'barcode' | 'name'; entries: TasnifEntry[] }>
+  >({});
+
+  // tasnif.soliq.uz dan taklif: barcode bo'yicha aniq moslik, bo'lmasa nom bo'yicha.
+  const loadSuggestion = async (productId: string) => {
+    setSuggestions((prev) => ({ ...prev, [productId]: { loading: true, entries: [] } }));
+    try {
+      const { data } = await api.get<{ matchedBy: 'barcode' | 'name'; entries: TasnifEntry[] }>(
+        `/admin/fiscal/products/${productId}/tasnif-suggest`,
+      );
+      setSuggestions((prev) => ({
+        ...prev,
+        [productId]: { loading: false, matchedBy: data.matchedBy, entries: data.entries.slice(0, 3) },
+      }));
+    } catch (e) {
+      setSuggestions((prev) => { const next = { ...prev }; delete next[productId]; return next; });
+      toast.error(extractErrorMessage(e));
+    }
+  };
+
+  const applyTasnif = useMutation({
+    mutationFn: ({ productId, entry }: { productId: string; entry: TasnifEntry }) =>
+      api.post(`/admin/fiscal/products/${productId}/apply-tasnif`, {
+        mxikCode: entry.mxikCode,
+        name: entry.name,
+        unitCode: entry.unitCode ?? undefined,
+      }),
+    onSuccess: (_, { productId }) => {
+      qc.invalidateQueries({ queryKey: ['admin', 'fiscal-missing-products'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'tax-categories'] });
+      setSuggestions((prev) => { const next = { ...prev }; delete next[productId]; return next; });
+      toast.success('MXIK biriktirildi (toifa avtomatik yaratildi)');
+    },
+    onError: (e) => toast.error(extractErrorMessage(e)),
+  });
 
   const listQ = useQuery<{ items: MissingProduct[]; total: number }>({
     queryKey: ['admin', 'fiscal-missing-products', page],
@@ -503,39 +553,85 @@ function MissingProductsSection() {
               </tr>
             </thead>
             <tbody>
-              {listQ.data.items.map((p) => (
-                <tr key={p.id} className="border-t hover:bg-muted/30">
-                  <td className="px-4 py-2">
-                    {p.name}
-                    {p.brand && <span className="ml-1 text-xs text-muted-foreground">({p.brand})</span>}
-                  </td>
-                  <td className="px-4 py-2 font-mono text-xs">{p.barcode ?? '—'}</td>
-                  <td className="px-4 py-2 text-right">{p.usageCount}</td>
-                  <td className="px-4 py-2">
-                    <select
-                      className="w-full max-w-64 rounded-md border border-border bg-background px-2 py-1 text-sm"
-                      value={selected[p.id] ?? ''}
-                      onChange={(e) => setSelected((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                    >
-                      <option value="">— tanlang —</option>
-                      {activeCategories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.title} ({c.mxikCode})
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <Button
-                      size="sm"
-                      disabled={!selected[p.id] || assign.isPending}
-                      onClick={() => assign.mutate({ productId: p.id, taxCategoryId: selected[p.id] })}
-                    >
-                      Biriktirish
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+              {listQ.data.items.map((p) => {
+                const sug = suggestions[p.id];
+                return (
+                  <Fragment key={p.id}>
+                    <tr className="border-t hover:bg-muted/30">
+                      <td className="px-4 py-2">
+                        {p.name}
+                        {p.brand && <span className="ml-1 text-xs text-muted-foreground">({p.brand})</span>}
+                      </td>
+                      <td className="px-4 py-2 font-mono text-xs">{p.barcode ?? '—'}</td>
+                      <td className="px-4 py-2 text-right">{p.usageCount}</td>
+                      <td className="px-4 py-2">
+                        <select
+                          className="w-full max-w-64 rounded-md border border-border bg-background px-2 py-1 text-sm"
+                          value={selected[p.id] ?? ''}
+                          onChange={(e) => setSelected((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                        >
+                          <option value="">— tanlang —</option>
+                          {activeCategories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.title} ({c.mxikCode})
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-4 py-2 text-right whitespace-nowrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={sug?.loading}
+                          onClick={() => loadSuggestion(p.id)}
+                          title="tasnif.soliq.uz dan barcode/nom bo'yicha MXIK taklifi"
+                        >
+                          <Sparkles className="size-3.5" />
+                          {sug?.loading ? '…' : 'Taklif'}
+                        </Button>{' '}
+                        <Button
+                          size="sm"
+                          disabled={!selected[p.id] || assign.isPending}
+                          onClick={() => assign.mutate({ productId: p.id, taxCategoryId: selected[p.id] })}
+                        >
+                          Biriktirish
+                        </Button>
+                      </td>
+                    </tr>
+                    {sug && !sug.loading && (
+                      <tr className="border-t bg-muted/20">
+                        <td colSpan={5} className="px-4 py-2">
+                          {sug.entries.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">Tasnifdan taklif topilmadi — qo&apos;lda tanlang.</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              <p className="text-xs text-muted-foreground">
+                                {sug.matchedBy === 'barcode'
+                                  ? 'Barcode bo\'yicha ANIQ moslik:'
+                                  : 'Nomi bo\'yicha takliflar (tekshirib tanlang):'}
+                              </p>
+                              {sug.entries.map((e) => (
+                                <div key={e.mxikCode} className="flex items-center gap-2 text-xs">
+                                  <span className="font-mono">{e.mxikCode}</span>
+                                  <span className="min-w-0 flex-1 truncate">{e.name}{e.groupName ? ` · ${e.groupName}` : ''}</span>
+                                  <Button
+                                    size="sm"
+                                    variant={sug.matchedBy === 'barcode' ? 'default' : 'outline'}
+                                    disabled={applyTasnif.isPending}
+                                    onClick={() => applyTasnif.mutate({ productId: p.id, entry: e })}
+                                  >
+                                    Qo&apos;llash
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         )}
