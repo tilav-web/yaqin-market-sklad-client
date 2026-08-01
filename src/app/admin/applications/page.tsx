@@ -17,6 +17,8 @@ interface SellerApplication {
   firstName: string;
   lastName: string;
   contactPhone: string | null;
+  stir: string | null;
+  entityType: string | null;
   note: string | null;
   status: 'pending' | 'approved' | 'rejected';
   rejectionReason: string | null;
@@ -139,7 +141,14 @@ export default function ApplicationsPage() {
   });
 
   const openApproveDialog = (app: SellerApplication) => {
-    setApproveForm({ ...EMPTY_APPROVE, fullName: `${app.firstName} ${app.lastName}`.trim() });
+    // Arizada kelgan soliq rekvizitlari formani oldindan to'ldiradi —
+    // admin faqat tekshiradi/to'g'rilaydi.
+    setApproveForm({
+      ...EMPTY_APPROVE,
+      fullName: `${app.firstName} ${app.lastName}`.trim(),
+      stir: app.stir ?? '',
+      entityType: app.entityType ?? '',
+    });
     setApproveErr('');
     setApprovingApp(app);
   };
@@ -213,6 +222,13 @@ export default function ApplicationsPage() {
                       <span className="text-foreground">{app.user.name ?? '—'}</span>
                       <span>· {app.user.phone}</span>
                     </div>
+
+                    {(app.stir || app.entityType) && (
+                      <p className="mt-1.5 text-sm text-muted-foreground">
+                        {app.entityType && <span className="mr-2">Yuridik shakl: <span className="text-foreground">{app.entityType}</span></span>}
+                        {app.stir && <span>STIR: <span className="font-mono text-foreground">{app.stir}</span></span>}
+                      </p>
+                    )}
 
                     {app.note && (
                       <p className="mt-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">

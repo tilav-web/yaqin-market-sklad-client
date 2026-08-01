@@ -3,8 +3,8 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle, BarChart3, Bell, BookOpen, ClipboardList, CreditCard, FileText, FolderTree,
-  HandCoins, History, Inbox, LogOut, Menu, MessageSquareWarning, Settings, Smartphone, Star, Store,
-  TrendingUp, Users, Wallet, X, type LucideIcon,
+  HandCoins, History, Inbox, LogOut, Menu, MessageSquareWarning, ReceiptText, Settings, Smartphone,
+  Star, Store, TrendingUp, Users, Wallet, X, type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
@@ -68,6 +68,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { href: '/admin/debts', label: 'Qarzlar', icon: AlertTriangle },
       { href: '/admin/payables', label: "Do'kon majburiyatlari", icon: HandCoins },
       { href: '/admin/prime', label: 'Prime obuna', icon: Star },
+      { href: '/admin/fiscal', label: 'Soliq / Cheklar', icon: ReceiptText },
     ],
   },
   {

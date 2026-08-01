@@ -19,6 +19,9 @@ interface SellerProfile {
   passportOrPinfl: string | null;
   stir: string | null;
   entityType: string | null;
+  vatPayer: boolean;
+  komissionerStatus: 'none' | 'pending' | 'confirmed';
+  komissionerConfirmedAt: string | null;
   bankCardNumber: string | null;
   bankCardHolderName: string | null;
   contractNumber: string | null;
@@ -32,6 +35,7 @@ interface ProfileForm {
   passportOrPinfl: string;
   stir: string;
   entityType: string;
+  vatPayer: boolean;
   bankCardNumber: string;
   bankCardHolderName: string;
   contractNumber: string;
@@ -39,7 +43,7 @@ interface ProfileForm {
   adminNotes: string;
 }
 
-const PROFILE_FIELDS: { k: keyof ProfileForm; label: string }[] = [
+const PROFILE_FIELDS: { k: Exclude<keyof ProfileForm, 'vatPayer'>; label: string }[] = [
   { k: 'fullName', label: 'To\'liq ism (FIO)' },
   { k: 'passportOrPinfl', label: 'Pasport / PINFL' },
   { k: 'stir', label: 'STIR / INN' },
@@ -56,6 +60,7 @@ function formFromProfile(p: SellerProfile | null): ProfileForm {
     passportOrPinfl: p?.passportOrPinfl ?? '',
     stir: p?.stir ?? '',
     entityType: p?.entityType ?? '',
+    vatPayer: p?.vatPayer ?? false,
     bankCardNumber: p?.bankCardNumber ?? '',
     bankCardHolderName: p?.bankCardHolderName ?? '',
     contractNumber: p?.contractNumber ?? '',
@@ -63,6 +68,12 @@ function formFromProfile(p: SellerProfile | null): ProfileForm {
     adminNotes: p?.adminNotes ?? '',
   };
 }
+
+const KOMISSIONER_BADGE: Record<SellerProfile['komissionerStatus'], { label: string; variant: 'neutral' | 'warning' | 'success' }> = {
+  none: { label: 'Komissioner: kiritilmagan', variant: 'neutral' },
+  pending: { label: 'Komissioner: kutilmoqda', variant: 'warning' },
+  confirmed: { label: 'Komissioner: tasdiqlangan', variant: 'success' },
+};
 
 function SellerProfilePanel({ userId }: { userId: string }) {
   const qc = useQueryClient();
@@ -77,9 +88,10 @@ function SellerProfilePanel({ userId }: { userId: string }) {
 
   const save = useMutation({
     mutationFn: async () => {
-      const body: Record<string, string> = {};
+      const body: Record<string, string | boolean> = { vatPayer: form.vatPayer };
       (Object.keys(form) as (keyof ProfileForm)[]).forEach((k) => {
-        if (form[k]) body[k] = form[k];
+        const v = form[k];
+        if (typeof v === 'string' && v) body[k] = v;
       });
       await api.put(`/sellers/admin/profiles/${userId}`, body);
     },
@@ -90,6 +102,16 @@ function SellerProfilePanel({ userId }: { userId: string }) {
       toast.success('Sotuvchi profili saqlandi');
     },
     onError: (e) => setErr(extractErrorMessage(e)),
+  });
+
+  const setKomissioner = useMutation({
+    mutationFn: (confirmed: boolean) =>
+      api.put(`/sellers/admin/profiles/${userId}/komissioner`, { confirmed }),
+    onSuccess: (_, confirmed) => {
+      qc.invalidateQueries({ queryKey: ['admin', 'seller-profile', userId] });
+      toast.success(confirmed ? 'Komissioner tasdiqlandi' : "Komissioner tasdig'i bekor qilindi");
+    },
+    onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
   const startEdit = () => {
@@ -140,6 +162,14 @@ function SellerProfilePanel({ userId }: { userId: string }) {
               </div>
             ))}
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={form.vatPayer}
+              onChange={(e) => setForm((prev) => ({ ...prev, vatPayer: e.target.checked }))}
+            />
+            QQS to&apos;lovchi (fiskal cheklar QQS bilan chiqadi)
+          </label>
           <div>
             <label className="mb-0.5 block text-xs font-medium text-muted-foreground">Admin izohi (ichki)</label>
             <textarea
@@ -173,11 +203,47 @@ function SellerProfilePanel({ userId }: { userId: string }) {
           <p><span className="text-muted-foreground">Karta egasi:</span> {p.bankCardHolderName || '—'}</p>
           <p><span className="text-muted-foreground">Shartnoma №:</span> {p.contractNumber || '—'}</p>
           <p><span className="text-muted-foreground">Shartnoma sanasi:</span> {p.contractDate || '—'}</p>
+          <p><span className="text-muted-foreground">QQS:</span> {p.vatPayer ? "To'lovchi" : "To'lovchi emas"}</p>
           {p.adminNotes && (
             <p className="sm:col-span-2">
               <span className="text-muted-foreground">Admin izohi:</span> {p.adminNotes}
             </p>
           )}
+        </div>
+      )}
+
+      {p && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+          <Badge variant={KOMISSIONER_BADGE[p.komissionerStatus].variant}>
+            {KOMISSIONER_BADGE[p.komissionerStatus].label}
+          </Badge>
+          {p.komissionerStatus === 'pending' && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={setKomissioner.isPending}
+              onClick={() => {
+                if (window.confirm("Seller my.soliq.uz kabinetida platformani komissioner sifatida qo'shganini soliq kabinetingizda tekshirdingizmi?")) {
+                  setKomissioner.mutate(true);
+                }
+              }}
+            >
+              Komissionerni tasdiqlash
+            </Button>
+          )}
+          {p.komissionerStatus === 'confirmed' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={setKomissioner.isPending}
+              onClick={() => setKomissioner.mutate(false)}
+            >
+              Tasdiqni bekor qilish
+            </Button>
+          )}
+          <p className="w-full text-xs text-muted-foreground">
+            Seller o&apos;z my.soliq.uz kabinetida platformani (STIRimizni) &quot;vositachi/komissioner&quot; ro&apos;yxatiga qo&apos;shishi shart — shundagina uning nomidan chiqarilgan cheklar soliq hisobotida to&apos;g&apos;ri aks etadi.
+          </p>
         </div>
       )}
 
