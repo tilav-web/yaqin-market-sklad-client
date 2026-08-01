@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Eye, MapPin, Package, Phone, ShieldOff, Search, Store, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
 import { Pagination } from '@/components/admin/pagination';
@@ -305,6 +305,14 @@ export default function AdminOrdersPage() {
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(0);
   const [detailId, setDetailId] = useState<string | null>(null);
+
+  // ?order=<id> bilan kelganda (masalan fiskal chekdan) detalni darhol ochish.
+  // Statik eksportda useSearchParams Suspense talab qiladi — window orqali
+  // bir martalik o'qish soddaroq va shu maqsad uchun yetarli.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('order');
+    if (id) setDetailId(id);
+  }, []);
 
   const ordersQuery = useQuery<OrdersPageResp>({
     queryKey: ['admin', 'orders', submitted, status, dateFrom, dateTo, page],

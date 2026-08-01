@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronUp, Pencil, Plus, RefreshCw, ReceiptText, Sparkles, Tags, TriangleAlert } from 'lucide-react';
+import Link from 'next/link';
 import { Fragment, useState } from 'react';
 
 import { PageHeader, StatPill } from '@/components/admin/page-header';
@@ -217,7 +218,10 @@ function ReceiptRow({
           <td colSpan={6} className="px-4 py-3">
             <div className="space-y-2 text-xs">
               <p className="text-muted-foreground">
-                Buyurtma: <span className="font-mono">{r.orderId}</span>
+                Buyurtma:{' '}
+                <Link href={`/admin/orders?order=${r.orderId}`} className="font-mono text-primary underline">
+                  {r.orderId}
+                </Link>
                 {r.fiscalReceiptNumber && <> · Fiskal raqam: {r.fiscalReceiptNumber}</>}
                 {r.sellerVatPayer && <> · QQS to&apos;lovchi</>}
               </p>
