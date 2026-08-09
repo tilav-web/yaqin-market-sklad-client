@@ -4,17 +4,19 @@ import { Card } from '@/components/ui/card';
 import { ResolveComplaintButton } from './resolve-complaint-button';
 
 /**
- * Matches OrderComplaint (server/src/complaints/entities/order-complaint.entity.ts)
- * as returned by GET /admin/complaints and GET /admin/shops/:id/complaints — raw
- * IDs only, no joined customer/shop names (the service queries the table directly
- * without relations), so this card surfaces orderId/customerId/shopId as-is —
- * same "raw id, no name join" pattern already used for sellerId on the debts page.
+ * Matches AdminComplaintRow (server/src/complaints/complaints.service.ts) as
+ * returned by GET /admin/complaints and GET /admin/shops/:id/complaints —
+ * orderNumber/customerName/shopName are joined server-side (ComplaintsService's
+ * withNames()) so this card never has to display a raw UUID.
  */
 export interface AdminComplaint {
   id: string;
   orderId: string;
+  orderNumber: string | null;
   customerId: string;
+  customerName: string | null;
   shopId: string;
+  shopName: string | null;
   reason: string;
   description: string | null;
   status: 'open' | 'resolved';
@@ -55,17 +57,9 @@ export function ComplaintCard({
       </div>
 
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <span>
-          Buyurtma: <span className="font-mono">{complaint.orderId}</span>
-        </span>
-        <span>
-          Mijoz: <span className="font-mono">{complaint.customerId}</span>
-        </span>
-        {showShopId && (
-          <span>
-            Do&apos;kon: <span className="font-mono">{complaint.shopId}</span>
-          </span>
-        )}
+        <span>Buyurtma: {complaint.orderNumber ? `#${complaint.orderNumber}` : complaint.orderId}</span>
+        <span>Mijoz: {complaint.customerName ?? complaint.customerId}</span>
+        {showShopId && <span>Do&apos;kon: {complaint.shopName ?? complaint.shopId}</span>}
         <span>{new Date(complaint.createdAt).toLocaleString('uz-UZ')}</span>
       </div>
 

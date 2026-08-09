@@ -36,6 +36,18 @@ const LABEL: Record<string, string> = {
   fiscal_mode: 'Fiskal rejim',
   platform_legal_name: 'Operator (MChJ) nomi',
   platform_stir: 'Operator STIRi',
+  risk_delivered_max_distance_m: '"Yetkazildi" — manzildan max masofa (metr)',
+  risk_evidence_max_accuracy_m: 'GPS aniqlik chegarasi (metr)',
+  risk_pickup_max_distance_m: '"Kuryerga berish" — do\'kondan max masofa (metr)',
+  risk_impossible_speed_kmh: "Imkonsiz tezlik chegarasi (km/soat)",
+  risk_impossible_min_segment_m: 'Tezlik tekshiruvi uchun min masofa (metr)',
+  risk_low_rating_threshold: 'Kuryer past baho chegarasi (yulduz)',
+  risk_address_pin_max_distance_m: "Manzil pini — GPSdan max masofa (metr, 0=o'chiq)",
+  risk_shop_relocation_max_m: "Do'kon pinining siljish chegarasi (metr)",
+  risk_device_max_accounts: 'Qurilmadagi max akkaunt soni',
+  risk_ping_retention_days: 'Kuryer treki saqlash muddati (kun)',
+  risk_ping_min_interval_sec: 'Ping oralig\'i (soniya)',
+  risk_qr_handshake_enabled: 'QR-tasdiq yoqilganmi (1/0)',
 };
 
 /** Server tomonidagi matnli sozlamalar — raqam validatsiyasi qo'llanmaydi. */

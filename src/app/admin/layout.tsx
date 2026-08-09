@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle, BarChart3, Bell, BookOpen, ClipboardList, CreditCard, FileText, FolderTree,
-  HandCoins, History, Inbox, LogOut, Menu, MessageSquareWarning, ReceiptText, Settings, Smartphone,
+  HandCoins, History, Inbox, LogOut, Menu, MessageSquareWarning, ReceiptText, Settings, ShieldAlert, Smartphone,
   Star, Store, TrendingUp, Users, Wallet, X, type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -57,7 +57,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { href: '/admin/shops', label: "Do'konlar", icon: Store },
       { href: '/admin/orders', label: 'Buyurtmalar', icon: ClipboardList },
-      { href: '/admin/complaints', label: 'Shikoyatlar', icon: MessageSquareWarning },
+      { href: '/admin/complaints', label: 'Shikoyatlar', icon: MessageSquareWarning, badgeKey: 'complaintsOpen' },
     ],
   },
   {
@@ -76,6 +76,13 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
       { href: '/admin/inquiries', label: 'Murojaatlar', icon: Inbox, badgeKey: 'contactUnread' },
+    ],
+  },
+  {
+    title: 'Xavfsizlik',
+    items: [
+      { href: '/admin/risk', label: 'Xavf signallari', icon: ShieldAlert, badgeKey: 'riskOpen' },
+      { href: '/admin/reviews', label: 'Sharhlar', icon: Star },
     ],
   },
   {
@@ -166,8 +173,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     enabled: !!tokenStore.access && !!meQuery.data?.isAdmin,
     refetchInterval: 60_000,
   });
+  const complaintsOpenQuery = useQuery({
+    queryKey: ['admin', 'complaints-open-count'],
+    queryFn: async () => (await api.get<number>('/admin/complaints/open-count')).data,
+    enabled: !!tokenStore.access && !!meQuery.data?.isAdmin,
+    refetchInterval: 60_000,
+  });
+  const riskOpenQuery = useQuery({
+    queryKey: ['admin', 'risk', 'open-count'],
+    queryFn: async () => (await api.get<number>('/admin/risk/flags/open-count')).data,
+    enabled: !!tokenStore.access && !!meQuery.data?.isAdmin,
+    refetchInterval: 60_000,
+  });
   const badgeCounts: Record<string, number> = {
     contactUnread: contactUnreadQuery.data ?? 0,
+    complaintsOpen: complaintsOpenQuery.data ?? 0,
+    riskOpen: riskOpenQuery.data ?? 0,
   };
 
   useEffect(() => {
