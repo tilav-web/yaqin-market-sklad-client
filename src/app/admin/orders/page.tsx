@@ -84,6 +84,9 @@ interface AdminOrderDetail extends AdminOrderSummary {
   orderEvidence: LocationEvidence | null;
   dispatchedEvidence: LocationEvidence | null;
   deliveredEvidence: LocationEvidence | null;
+  /** Click ekvayring komissiyasi (to'lov to'liq summadan ushlab qolingan taxminiy ulush) — naqd buyurtmada 0. */
+  providerFeeAmount: number;
+  providerFeePercentSnapshot: number | null;
 }
 
 const EVIDENCE_SOURCE_LABEL: Record<LocationEvidence['source'], string> = {
@@ -342,6 +345,14 @@ function OrderDetailModal({ orderId, onClose }: { orderId: string; onClose: () =
                 <div className="flex justify-between font-bold text-foreground">
                   <span>Jami</span><span>{money(o.total)}</span>
                 </div>
+                {o.providerFeeAmount > 0 && (
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>
+                      Click komissiyasi{o.providerFeePercentSnapshot != null ? ` (${o.providerFeePercentSnapshot}%)` : ''}
+                    </span>
+                    <span>−{money(o.providerFeeAmount)}</span>
+                  </div>
+                )}
               </div>
             </div>
 
