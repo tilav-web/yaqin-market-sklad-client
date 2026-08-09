@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Eye, MapPin, Package, Phone, ShieldOff, Search, Store, X } from 'lucide-react';
+import { Download, Eye, MapPin, Navigation, Package, Phone, ShieldOff, Search, Store, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
@@ -56,6 +56,21 @@ interface AdminOrderSummary {
   user: { id: string; name: string | null; phone: string } | null;
 }
 
+/** Mirrors server/src/geo/location-evidence.ts's LocationEvidence — admin-only, never sent to the customer/shop apps. */
+interface LocationEvidence {
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  capturedAt: string | null;
+  mocked: boolean | null;
+  source: 'foreground' | 'background' | 'last_known' | 'map_pick';
+  deviceId: string | null;
+  receivedAt: string;
+  skewMs: number | null;
+  actorUserId: string;
+  actorRole: 'customer' | 'shop';
+}
+
 /** GET /admin/orders/:id also joins items/deliveryAddress — the list endpoint does not. */
 interface AdminOrderDetail extends AdminOrderSummary {
   subTotal: number;
@@ -66,6 +81,64 @@ interface AdminOrderDetail extends AdminOrderSummary {
   timeline: TimelineEvent[];
   items: OrderItemRow[];
   deliveryAddress: { address: string; latitude: number; longitude: number } | null;
+  orderEvidence: LocationEvidence | null;
+  dispatchedEvidence: LocationEvidence | null;
+  deliveredEvidence: LocationEvidence | null;
+}
+
+const EVIDENCE_SOURCE_LABEL: Record<LocationEvidence['source'], string> = {
+  foreground: 'Old fonda',
+  background: 'Fon rejimida',
+  last_known: "Oxirgi ma'lum joylashuv",
+  map_pick: 'Xaritadan tanlangan',
+};
+
+/** Mirrors server/src/geo/geo.util.ts's haversineKm — metrda, admin panel uchun mustaqil hisoblanadi. */
+function distanceMeters(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLon = toRad(b.longitude - a.longitude);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+function EvidenceRow({
+  label,
+  evidence,
+  address,
+}: {
+  label: string;
+  evidence: LocationEvidence | null;
+  address: { latitude: number; longitude: number } | null;
+}) {
+  if (!evidence) {
+    return (
+      <div className="flex items-center justify-between px-3 py-2 text-sm">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="text-xs text-muted-foreground">Dalil yo&apos;q</span>
+      </div>
+    );
+  }
+  const dist = address ? distanceMeters(evidence, address) : null;
+  const skewSec = evidence.skewMs != null ? Math.round(evidence.skewMs / 1000) : null;
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm">
+      <span className="w-36 shrink-0 text-muted-foreground">{label}</span>
+      <span className="text-foreground">{EVIDENCE_SOURCE_LABEL[evidence.source] ?? evidence.source}</span>
+      <span className="text-xs text-muted-foreground">
+        ({evidence.actorRole === 'customer' ? 'mijoz' : "do'kon"})
+      </span>
+      {evidence.accuracy != null && (
+        <span className="text-xs text-muted-foreground">±{Math.round(evidence.accuracy)}m aniqlik</span>
+      )}
+      {dist != null && <span className="text-xs text-muted-foreground">manzildan {Math.round(dist)}m</span>}
+      {skewSec != null && Math.abs(skewSec) > 5 && (
+        <span className="text-xs text-amber-700">soat farqi {skewSec}s</span>
+      )}
+      {evidence.mocked && <Badge variant="danger">GPS soxta bo&apos;lishi mumkin</Badge>}
+    </div>
+  );
 }
 
 interface OrdersPageResp { items: AdminOrderSummary[]; total: number }
@@ -226,6 +299,19 @@ function OrderDetailModal({ orderId, onClose }: { orderId: string; onClose: () =
                 </p>
                 <p className="mt-1 text-sm text-foreground">{o.deliveryAddress.address}</p>
                 <p className="text-xs text-muted-foreground">{o.distanceKm.toFixed(1)} km</p>
+              </div>
+            )}
+
+            {(o.orderEvidence || o.dispatchedEvidence || o.deliveredEvidence) && (
+              <div className="rounded-lg border border-border">
+                <p className="flex items-center gap-1.5 border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <Navigation className="size-3.5" /> Lokatsiya dalili
+                </p>
+                <div className="divide-y divide-border">
+                  <EvidenceRow label="Buyurtma berilganda" evidence={o.orderEvidence} address={o.deliveryAddress} />
+                  <EvidenceRow label="Kuryerga berilganda" evidence={o.dispatchedEvidence} address={null} />
+                  <EvidenceRow label="Yetkazilganda" evidence={o.deliveredEvidence} address={o.deliveryAddress} />
+                </div>
               </div>
             )}
 
