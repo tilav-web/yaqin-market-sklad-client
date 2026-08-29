@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { I18nInput, I18nValue } from '@/components/ui/i18n-input';
 import { api, extractErrorMessage } from '@/lib/api';
-import { latinToCyrillic } from '@/lib/transliteration';
+import { latinToCyrillic, getLocalizedText } from '@/lib/transliteration';
 import { toast } from '@/stores/toast';
 
 interface RevenueStats {
@@ -23,14 +23,14 @@ interface RevenueStats {
 
 interface PrimePlan {
   id: string;
-  name: string;
+  name: string | { uz?: string; kr?: string; ru?: string };
   nameUzLatn?: string;
   nameUzCyrl?: string;
   nameRu?: string;
   monthlyPrice: string;
   yearlyPrice: string | null;
   commissionRate: string;
-  description: string | null;
+  description: string | { uz?: string; kr?: string; ru?: string } | null;
   descriptionUzLatn?: string | null;
   descriptionUzCyrl?: string | null;
   descriptionRu?: string | null;
@@ -155,19 +155,25 @@ export default function AdminPrimePage() {
 
   const startEdit = (p: PrimePlan) => {
     setEditing(p.id);
+    const nameUz = p.nameUzLatn || getLocalizedText(p.name, 'uz');
+    const nameKr = p.nameUzCyrl || getLocalizedText(p.name, 'kr') || latinToCyrillic(nameUz);
+    const nameRu = p.nameRu || getLocalizedText(p.name, 'ru') || '';
+    const descUz = p.descriptionUzLatn || getLocalizedText(p.description, 'uz');
+    const descKr = p.descriptionUzCyrl || getLocalizedText(p.description, 'kr');
+    const descRu = p.descriptionRu || getLocalizedText(p.description, 'ru');
     setForm({
       name: {
-        uz: p.nameUzLatn || p.name,
-        kr: p.nameUzCyrl || latinToCyrillic(p.nameUzLatn || p.name),
-        ru: p.nameRu || '',
+        uz: nameUz,
+        kr: nameKr,
+        ru: nameRu,
       },
       monthlyPrice: p.monthlyPrice,
       yearlyPrice: p.yearlyPrice ?? '',
       commissionRate: p.commissionRate,
       description: {
-        uz: p.descriptionUzLatn || p.description || '',
-        kr: p.descriptionUzCyrl || '',
-        ru: p.descriptionRu || '',
+        uz: descUz,
+        kr: descKr,
+        ru: descRu,
       },
       sortOrder: String(p.sortOrder),
     });
@@ -337,7 +343,7 @@ export default function AdminPrimePage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-foreground">{p.nameUzLatn || p.name}</span>
+                        <span className="font-bold text-sm text-foreground">{p.nameUzLatn || getLocalizedText(p.name, 'uz')}</span>
                         {p.nameRu && p.nameRu !== p.nameUzLatn && (
                           <span className="text-xs text-muted-foreground font-normal">({p.nameRu})</span>
                         )}
@@ -345,7 +351,7 @@ export default function AdminPrimePage() {
                           {p.isActive ? 'Faol' : 'Nofaol'}
                         </Badge>
                       </div>
-                      {p.description && <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>}
+                      {p.description && <p className="text-xs text-muted-foreground mt-0.5">{getLocalizedText(p.description, 'uz')}</p>}
                     </div>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="size-7" onClick={() => startEdit(p)}>
@@ -384,7 +390,7 @@ export default function AdminPrimePage() {
                 <div>
                   <p className="font-semibold text-foreground">{s.seller?.name || s.seller?.phone || 'Seller'}</p>
                   <p className="text-[0.65rem] text-muted-foreground">
-                    Tarif: {s.plan?.name} · Komissiya: {s.commissionRateSnapshot}% · Muddat: {s.startDate} dan {s.endDate} gacha
+                    Tarif: {getLocalizedText(s.plan?.name, 'uz')} · Komissiya: {s.commissionRateSnapshot}% · Muddat: {s.startDate} dan {s.endDate} gacha
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -438,7 +444,7 @@ export default function AdminPrimePage() {
       <ConfirmDialog
         open={!!pendingDelete}
         title="Tarifni o'chirish"
-        description={`"${pendingDelete?.name}" tarifini o'chirishni xohlaysizmi?`}
+        description={`"${getLocalizedText(pendingDelete?.name, 'uz')}" tarifini o'chirishni xohlaysizmi?`}
         confirmLabel="Ha, o'chirish"
         pending={del.isPending}
         onConfirm={() => pendingDelete && del.mutate(pendingDelete.id)}

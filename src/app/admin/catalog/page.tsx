@@ -27,7 +27,7 @@ import { Card, Input } from '@/components/ui/card';
 import { I18nInput, I18nValue } from '@/components/ui/i18n-input';
 import { SearchSelect, SearchSelectOption } from '@/components/ui/search-select';
 import { api, downloadFile, extractErrorMessage } from '@/lib/api';
-import { latinToCyrillic } from '@/lib/transliteration';
+import { latinToCyrillic, getLocalizedText } from '@/lib/transliteration';
 import { slugify } from '@/lib/slug';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { toast } from '@/stores/toast';
@@ -44,7 +44,7 @@ interface CatalogUsageRow {
 function UsageModal({ product, onClose }: { product: GlobalProduct; onClose: () => void }) {
   useEscapeKey(true, onClose);
   const usageQ = useQuery<CatalogUsageRow[]>({
-    queryKey: ['admin', 'catalog', 'usage', product.id],
+    queryKey: ['admin', 'catalog-usage', product.id],
     queryFn: async () => (await api.get(`/admin/catalog/${product.id}/usage`)).data,
   });
   const rows = usageQ.data ?? [];
@@ -54,7 +54,7 @@ function UsageModal({ product, onClose }: { product: GlobalProduct; onClose: () 
       <Card className="max-h-[80vh] w-full max-w-lg overflow-y-auto p-6 bg-card border-border shadow-2xl">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-base font-bold text-foreground">{product.nameUzLatn || product.name}</h2>
+            <h2 className="text-base font-bold text-foreground">{product.nameUzLatn || getLocalizedText(product.name, 'uz')}</h2>
             <p className="text-xs text-muted-foreground">Bu mahsulotni sotayotgan do&apos;konlar</p>
           </div>
           <button className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted transition-colors" onClick={onClose}>
@@ -106,12 +106,12 @@ interface GlobalProduct {
   id: string;
   slug?: string;
   barcode: string | null;
-  name: string;
+  name: string | { uz?: string; kr?: string; ru?: string };
   nameUzLatn?: string;
   nameUzCyrl?: string;
   nameRu?: string;
   brand: string | null;
-  description: string | null;
+  description: string | { uz?: string; kr?: string; ru?: string } | null;
   descriptionUzLatn?: string | null;
   descriptionUzCyrl?: string | null;
   descriptionRu?: string | null;
@@ -128,6 +128,7 @@ interface GlobalProduct {
 interface Category {
   id: string;
   slug: string;
+  name?: string | { uz?: string; kr?: string; ru?: string };
   nameUzLatn: string;
   nameUzCyrl: string;
   nameRu: string;
@@ -206,18 +207,24 @@ function formReducer(state: FormState, action: FormAction): FormState {
   switch (action.type) {
     case 'OPEN_NEW':
       return { ...FORM_INIT, open: true };
-    case 'OPEN_EDIT':
+    case 'OPEN_EDIT': {
+      const nameUz = action.p.nameUzLatn || getLocalizedText(action.p.name, 'uz');
+      const nameKr = action.p.nameUzCyrl || getLocalizedText(action.p.name, 'kr') || latinToCyrillic(nameUz);
+      const nameRu = action.p.nameRu || getLocalizedText(action.p.name, 'ru') || '';
+      const descUz = action.p.descriptionUzLatn || getLocalizedText(action.p.description, 'uz');
+      const descKr = action.p.descriptionUzCyrl || getLocalizedText(action.p.description, 'kr');
+      const descRu = action.p.descriptionRu || getLocalizedText(action.p.description, 'ru');
       return {
         open: true,
         editing: action.p,
-        slug: action.p.slug || slugify(action.p.nameUzLatn || action.p.name),
+        slug: action.p.slug || slugify(nameUz),
         slugEdited: !!action.p.slug,
-        nameUzLatn: action.p.nameUzLatn || action.p.name,
-        nameUzCyrl: action.p.nameUzCyrl || latinToCyrillic(action.p.nameUzLatn || action.p.name),
-        nameRu: action.p.nameRu || '',
-        descriptionUzLatn: action.p.descriptionUzLatn || action.p.description || '',
-        descriptionUzCyrl: action.p.descriptionUzCyrl || '',
-        descriptionRu: action.p.descriptionRu || '',
+        nameUzLatn: nameUz,
+        nameUzCyrl: nameKr,
+        nameRu: nameRu,
+        descriptionUzLatn: descUz,
+        descriptionUzCyrl: descKr,
+        descriptionRu: descRu,
         barcode: action.p.barcode ?? '',
         brand: action.p.brand ?? '',
         categoryId: action.p.categoryId,
@@ -227,6 +234,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
         isVerified: action.p.isVerified,
         isActive: action.p.isActive,
       };
+    }
     case 'CLOSE':
       return FORM_INIT;
     case 'SET':
@@ -284,8 +292,8 @@ export default function CatalogPage() {
 
   const categoryOptions: SearchSelectOption[] = leafCats.map((c) => ({
     value: c.id,
-    label: c.nameUzLatn,
-    sublabel: c.nameRu || c.nameUzCyrl,
+    label: c.nameUzLatn || getLocalizedText(c.name, 'uz'),
+    sublabel: c.nameRu || c.nameUzCyrl || getLocalizedText(c.name, 'ru'),
   }));
 
   // Parent products options for size group
@@ -293,7 +301,7 @@ export default function CatalogPage() {
     .filter((p) => !form.editing || p.id !== form.editing.id)
     .map((p) => ({
       value: p.id,
-      label: p.nameUzLatn || p.name,
+      label: p.nameUzLatn || getLocalizedText(p.name, 'uz'),
       sublabel: p.barcode ? `Barkod: ${p.barcode}` : p.brand || undefined,
       badge: `${p.unitSize} ${UNIT_LABELS[p.unitType] ?? p.unitType}`,
     }));
@@ -476,13 +484,14 @@ export default function CatalogPage() {
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-sm text-foreground truncate">
-                        {p.nameUzLatn || p.name}
+                        {p.nameUzLatn || getLocalizedText(p.name, 'uz')}
                       </p>
-                      {p.nameRu && p.nameRu !== p.nameUzLatn && (
-                        <span className="text-[0.7rem] text-muted-foreground font-normal">
-                          ({p.nameRu})
-                        </span>
-                      )}
+                      {(p.nameRu || getLocalizedText(p.name, 'ru')) &&
+                        (p.nameRu || getLocalizedText(p.name, 'ru')) !== (p.nameUzLatn || getLocalizedText(p.name, 'uz')) && (
+                          <span className="text-[0.7rem] text-muted-foreground font-normal">
+                            ({p.nameRu || getLocalizedText(p.name, 'ru')})
+                          </span>
+                        )}
                       {p.isVerified && (
                         <Badge variant="success" className="gap-1 text-[0.65rem]">
                           <BadgeCheck className="w-3 h-3" /> Tasdiqlangan

@@ -130,3 +130,16 @@ export function cyrillicToLatin(text: string): string {
   }
   return out;
 }
+
+export function getLocalizedText(
+  val: string | { uz?: string; kr?: string; ru?: string } | null | undefined,
+  lang: 'uz' | 'kr' | 'ru' = 'uz',
+): string {
+  if (!val) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object') {
+    return val[lang] || val.uz || val.ru || val.kr || '';
+  }
+  return String(val);
+}
+

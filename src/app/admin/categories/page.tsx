@@ -11,13 +11,14 @@ import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { I18nInput } from '@/components/ui/i18n-input';
 import { api, extractErrorMessage } from '@/lib/api';
-import { latinToCyrillic } from '@/lib/transliteration';
+import { latinToCyrillic, getLocalizedText } from '@/lib/transliteration';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { toast } from '@/stores/toast';
 
 interface Category {
   id: string;
   slug: string;
+  name?: string | { uz?: string; kr?: string; ru?: string };
   nameUzLatn: string;
   nameUzCyrl: string;
   nameRu: string;
@@ -281,7 +282,7 @@ export default function CategoriesPage() {
           pendingDelete && (
             <div className="space-y-1 text-xs">
               <p>
-                Kategoriya: <span className="font-semibold text-foreground">{pendingDelete.nameUzLatn}</span>
+                Kategoriya: <span className="font-semibold text-foreground">{pendingDelete.nameUzLatn || getLocalizedText(pendingDelete.name, 'uz')}</span>
               </p>
               {pendingDelete.children && pendingDelete.children.length > 0 && (
                 <p className="mt-2 text-destructive font-medium">
@@ -319,50 +320,54 @@ function CategoryList({
 }) {
   return (
     <ul className="space-y-0.5">
-      {items.map((c) => (
-        <li key={c.id}>
-          <div
-            className="group flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-muted/40"
-            style={{ paddingLeft: 12 + depth * 20 }}>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-xs font-semibold text-foreground truncate">{c.nameUzLatn}</span>
-              {c.nameRu && c.nameRu !== c.nameUzLatn && (
-                <span className="text-[0.65rem] text-muted-foreground truncate">({c.nameRu})</span>
-              )}
-              <span className="text-[0.65rem] font-mono text-muted-foreground">/{c.slug}</span>
-              {!c.isActive && (
-                <Badge variant="neutral" className="text-[0.65rem]">
-                  O&apos;chirilgan
-                </Badge>
-              )}
+      {items.map((c) => {
+        const nameUz = c.nameUzLatn || getLocalizedText(c.name, 'uz');
+        const nameRu = c.nameRu || getLocalizedText(c.name, 'ru');
+        return (
+          <li key={c.id}>
+            <div
+              className="group flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-muted/40"
+              style={{ paddingLeft: 12 + depth * 20 }}>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs font-semibold text-foreground truncate">{nameUz}</span>
+                {nameRu && nameRu !== nameUz && (
+                  <span className="text-[0.65rem] text-muted-foreground truncate">({nameRu})</span>
+                )}
+                <span className="text-[0.65rem] font-mono text-muted-foreground">/{c.slug}</span>
+                {!c.isActive && (
+                  <Badge variant="neutral" className="text-[0.65rem]">
+                    O&apos;chirilgan
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <Button variant="ghost" size="sm" onClick={() => onToggleActive(c)} className="text-[0.7rem] h-7 px-2">
+                  {c.isActive ? 'Yashirish' : "Ko'rsatish"}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => onAddChild(c.id)} className="text-[0.7rem] h-7 px-2">
+                  <Plus className="size-3 mr-1" /> Pastki
+                </Button>
+                <Button variant="ghost" size="icon" className="size-7" onClick={() => onEdit(c)}>
+                  <Pencil className="size-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="size-7 text-destructive" onClick={() => onDelete(c)}>
+                  <Trash2 className="size-3.5" />
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              <Button variant="ghost" size="sm" onClick={() => onToggleActive(c)} className="text-[0.7rem] h-7 px-2">
-                {c.isActive ? 'Yashirish' : "Ko'rsatish"}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => onAddChild(c.id)} className="text-[0.7rem] h-7 px-2">
-                <Plus className="size-3 mr-1" /> Pastki
-              </Button>
-              <Button variant="ghost" size="icon" className="size-7" onClick={() => onEdit(c)}>
-                <Pencil className="size-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="size-7 text-destructive" onClick={() => onDelete(c)}>
-                <Trash2 className="size-3.5" />
-              </Button>
-            </div>
-          </div>
-          {c.children && c.children.length > 0 && (
-            <CategoryList
-              items={c.children}
-              depth={depth + 1}
-              onAddChild={onAddChild}
-              onEdit={onEdit}
-              onToggleActive={onToggleActive}
-              onDelete={onDelete}
-            />
-          )}
-        </li>
-      ))}
+            {c.children && c.children.length > 0 && (
+              <CategoryList
+                items={c.children}
+                depth={depth + 1}
+                onAddChild={onAddChild}
+                onEdit={onEdit}
+                onToggleActive={onToggleActive}
+                onDelete={onDelete}
+              />
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }
