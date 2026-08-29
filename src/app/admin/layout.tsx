@@ -2,12 +2,35 @@
 
 import { useQuery } from '@tanstack/react-query';
 import {
-  AlertTriangle, BarChart3, Bell, BookOpen, ClipboardList, CreditCard, FileText, FolderTree,
-  HandCoins, History, Inbox, LogOut, Menu, MessageSquareWarning, ReceiptText, Settings, ShieldAlert, Smartphone,
-  Star, Store, TrendingUp, Users, Wallet, X, type LucideIcon,
+  AlertTriangle,
+  BarChart3,
+  Bell,
+  BookOpen,
+  ClipboardList,
+  CreditCard,
+  FileText,
+  FolderTree,
+  HandCoins,
+  History,
+  Inbox,
+  LogOut,
+  Menu,
+  MessageSquareWarning,
+  ReceiptText,
+  Settings,
+  ShieldAlert,
+  Smartphone,
+  Star,
+  Store,
+  TrendingUp,
+  UserCheck,
+  Users,
+  Wallet,
+  X,
+  type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { Toaster } from '@/components/admin/toaster';
@@ -16,131 +39,171 @@ import { api, tokenStore } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { useEscapeKey } from '@/lib/use-escape-key';
 
-interface MeUser {
+export type AdminRole =
+  | 'super_admin'
+  | 'admin'
+  | 'moderator'
+  | 'support'
+  | 'finance'
+  | 'content_manager';
+
+export interface MeAdmin {
   id: string;
-  phone: string;
-  name: string | null;
-  isAdmin: boolean;
+  username: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  email: string | null;
+  role: AdminRole;
+  permissions: string[];
+  isActive: boolean;
 }
+
+export const ROLE_LABELS: Record<AdminRole, { label: string; color: string }> = {
+  super_admin: { label: 'Super Admin', color: 'bg-red-500/10 text-red-400 border-red-500/20' },
+  admin: { label: 'Administrator', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+  moderator: { label: 'Moderator', color: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
+  support: { label: 'Qo\'llab-quvvatlash', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  finance: { label: 'Buxgalter / Moliya', color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+  content_manager: { label: 'Kontent Menejer', color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' },
+};
 
 interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
-  /** Query key to read a live badge count from (e.g. unread inquiries). */
   badgeKey?: string;
+  allowedRoles?: AdminRole[];
 }
 
-const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
+const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Boshqaruv',
     items: [
       { href: '/admin/dashboard', label: 'Dashboard', icon: BarChart3 },
-      { href: '/admin/analytics', label: 'Analytics', icon: TrendingUp },
+      { href: '/admin/analytics', label: 'Analytics', icon: TrendingUp, allowedRoles: ['super_admin', 'admin', 'finance'] },
     ],
   },
   {
     title: 'Onboarding',
     items: [
-      { href: '/admin/applications', label: 'Seller arizalari', icon: FileText },
+      { href: '/admin/applications', label: 'Seller arizalari', icon: FileText, allowedRoles: ['super_admin', 'admin', 'moderator'] },
     ],
   },
   {
     title: 'Katalog',
     items: [
-      { href: '/admin/categories', label: 'Kategoriyalar', icon: FolderTree },
-      { href: '/admin/catalog', label: 'Global katalog', icon: BookOpen },
+      { href: '/admin/categories', label: 'Kategoriyalar', icon: FolderTree, allowedRoles: ['super_admin', 'admin', 'moderator', 'content_manager'] },
+      { href: '/admin/catalog', label: 'Global katalog', icon: BookOpen, allowedRoles: ['super_admin', 'admin', 'moderator', 'content_manager'] },
     ],
   },
   {
     title: 'Tarmoq',
     items: [
-      { href: '/admin/shops', label: "Do'konlar", icon: Store },
-      { href: '/admin/orders', label: 'Buyurtmalar', icon: ClipboardList },
-      { href: '/admin/complaints', label: 'Shikoyatlar', icon: MessageSquareWarning, badgeKey: 'complaintsOpen' },
+      { href: '/admin/shops', label: "Do'konlar", icon: Store, allowedRoles: ['super_admin', 'admin', 'moderator'] },
+      { href: '/admin/orders', label: 'Buyurtmalar', icon: ClipboardList, allowedRoles: ['super_admin', 'admin', 'moderator', 'support'] },
+      { href: '/admin/complaints', label: 'Shikoyatlar', icon: MessageSquareWarning, badgeKey: 'complaintsOpen', allowedRoles: ['super_admin', 'admin', 'support'] },
     ],
   },
   {
     title: 'Moliya',
     items: [
-      { href: '/admin/balance', label: 'Balanslar', icon: Wallet },
-      { href: '/admin/withdrawals', label: 'Yechish so\'rovlar', icon: CreditCard },
-      { href: '/admin/debts', label: 'Qarzlar', icon: AlertTriangle },
-      { href: '/admin/payables', label: "Do'kon majburiyatlari", icon: HandCoins },
-      { href: '/admin/prime', label: 'Prime obuna', icon: Star },
-      { href: '/admin/fiscal', label: 'Soliq / Cheklar', icon: ReceiptText },
+      { href: '/admin/balance', label: 'Balanslar', icon: Wallet, allowedRoles: ['super_admin', 'admin', 'finance'] },
+      { href: '/admin/withdrawals', label: 'Yechish so\'rovlar', icon: CreditCard, allowedRoles: ['super_admin', 'admin', 'finance'] },
+      { href: '/admin/debts', label: 'Qarzlar', icon: AlertTriangle, allowedRoles: ['super_admin', 'admin', 'finance'] },
+      { href: '/admin/payables', label: "Do'kon majburiyatlari", icon: HandCoins, allowedRoles: ['super_admin', 'admin', 'finance'] },
+      { href: '/admin/prime', label: 'Prime obuna', icon: Star, allowedRoles: ['super_admin', 'admin', 'finance'] },
+      { href: '/admin/fiscal', label: 'Soliq / Cheklar', icon: ReceiptText, allowedRoles: ['super_admin', 'admin', 'finance'] },
     ],
   },
   {
     title: 'Foydalanuvchilar',
     items: [
-      { href: '/admin/users', label: 'Foydalanuvchilar', icon: Users },
-      { href: '/admin/inquiries', label: 'Murojaatlar', icon: Inbox, badgeKey: 'contactUnread' },
+      { href: '/admin/users', label: 'Mijoz va Sellerlar', icon: Users, allowedRoles: ['super_admin', 'admin', 'support'] },
+      { href: '/admin/inquiries', label: 'Murojaatlar', icon: Inbox, badgeKey: 'contactUnread', allowedRoles: ['super_admin', 'admin', 'support'] },
     ],
   },
   {
     title: 'Xavfsizlik',
     items: [
-      { href: '/admin/risk', label: 'Xavf signallari', icon: ShieldAlert, badgeKey: 'riskOpen' },
-      { href: '/admin/reviews', label: 'Sharhlar', icon: Star },
+      { href: '/admin/risk', label: 'Xavf signallari', icon: ShieldAlert, badgeKey: 'riskOpen', allowedRoles: ['super_admin', 'admin', 'moderator'] },
+      { href: '/admin/reviews', label: 'Sharhlar', icon: Star, allowedRoles: ['super_admin', 'admin', 'moderator'] },
     ],
   },
   {
-    title: 'Tizim',
+    title: 'Xodimlar & Tizim',
     items: [
-      { href: '/admin/notifications', label: 'Bildirishnomalar', icon: Bell },
-      { href: '/admin/releases', label: 'Ilova versiyalari', icon: Smartphone },
-      { href: '/admin/audit-log', label: 'Amallar tarixi', icon: History },
-      { href: '/admin/settings', label: 'Sozlamalar', icon: Settings },
+      { href: '/admin/staff', label: 'Xodimlar (Staff)', icon: UserCheck, allowedRoles: ['super_admin', 'admin'] },
+      { href: '/admin/notifications', label: 'Bildirishnomalar', icon: Bell, allowedRoles: ['super_admin', 'admin'] },
+      { href: '/admin/releases', label: 'Ilova versiyalari', icon: Smartphone, allowedRoles: ['super_admin', 'admin'] },
+      { href: '/admin/audit-log', label: 'Amallar tarixi', icon: History, allowedRoles: ['super_admin', 'admin'] },
+      { href: '/admin/settings', label: 'Sozlamalar', icon: Settings, allowedRoles: ['super_admin'] },
     ],
   },
 ];
 
-const NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
-
-/** Shared between the desktop sidebar and the mobile drawer — same groups, same active/badge logic. */
 function NavGroups({
-  pathname, badgeCounts, onNavigate,
+  pathname,
+  badgeCounts,
+  role,
+  onNavigate,
 }: {
   pathname: string;
   badgeCounts: Record<string, number>;
+  role: AdminRole;
   onNavigate?: () => void;
 }) {
   return (
     <>
-      {NAV_GROUPS.map((group) => (
-        <div key={group.title}>
-          <p className="px-3 pb-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            {group.title}
-          </p>
-          <div className="space-y-1">
-            {group.items.map((item) => {
-              const isActive = pathname.startsWith(item.href);
-              const badge = item.badgeKey ? badgeCounts[item.badgeKey] : 0;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onNavigate}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent',
-                  )}>
-                  <item.icon className="size-4" />
-                  <span className="flex-1">{item.label}</span>
-                  {badge > 0 ? (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[0.65rem] font-bold text-primary-foreground">
-                      {badge > 99 ? '99+' : badge}
-                    </span>
-                  ) : null}
-                </Link>
-              );
-            })}
+      {NAV_GROUPS.map((group) => {
+        // Filter items by role (SuperAdmin sees all, others see items where their role is included or allowedRoles is omitted)
+        const visibleItems = group.items.filter((item) => {
+          if (role === 'super_admin') return true;
+          if (!item.allowedRoles) return true;
+          return item.allowedRoles.includes(role);
+        });
+
+        if (visibleItems.length === 0) return null;
+
+        return (
+          <div key={group.title} className="mb-4">
+            <p className="px-3 pb-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              {group.title}
+            </p>
+            <div className="space-y-1">
+              {visibleItems.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                const badge = item.badgeKey ? badgeCounts[item.badgeKey] : 0;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    className={cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-primary/10 text-primary font-semibold'
+                        : 'text-sidebar-foreground hover:bg-sidebar-accent',
+                    )}>
+                    <item.icon className="size-4 shrink-0" />
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {badge > 0 ? (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[0.65rem] font-bold text-primary-foreground">
+                        {badge > 99 ? '99+' : badge}
+                      </span>
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </>
   );
 }
@@ -148,8 +211,6 @@ function NavGroups({
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  // Cookies aren't available during SSR — wait for mount so the server and the
-  // first client render agree (avoids a hydration mismatch).
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -158,33 +219,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEscapeKey(mobileNavOpen, () => setMobileNavOpen(false));
 
   const meQuery = useQuery({
-    queryKey: ['me'],
+    queryKey: ['admin', 'me'],
     queryFn: async () => {
-      const res = await api.get<MeUser>('/users/me');
+      const res = await api.get<MeAdmin>('/admin/auth/me');
       return res.data;
     },
     enabled: !!tokenStore.access,
     retry: false,
   });
 
+  const admin = meQuery.data;
+
   const contactUnreadQuery = useQuery({
     queryKey: ['admin', 'contact-unread'],
     queryFn: async () => (await api.get<number>('/admin/contact/unread-count')).data,
-    enabled: !!tokenStore.access && !!meQuery.data?.isAdmin,
+    enabled: !!tokenStore.access && !!admin,
     refetchInterval: 60_000,
   });
+
   const complaintsOpenQuery = useQuery({
     queryKey: ['admin', 'complaints-open-count'],
     queryFn: async () => (await api.get<number>('/admin/complaints/open-count')).data,
-    enabled: !!tokenStore.access && !!meQuery.data?.isAdmin,
+    enabled: !!tokenStore.access && !!admin,
     refetchInterval: 60_000,
   });
+
   const riskOpenQuery = useQuery({
     queryKey: ['admin', 'risk', 'open-count'],
     queryFn: async () => (await api.get<number>('/admin/risk/flags/open-count')).data,
-    enabled: !!tokenStore.access && !!meQuery.data?.isAdmin,
+    enabled: !!tokenStore.access && !!admin,
     refetchInterval: 60_000,
   });
+
   const badgeCounts: Record<string, number> = {
     contactUnread: contactUnreadQuery.data ?? 0,
     complaintsOpen: complaintsOpenQuery.data ?? 0,
@@ -196,145 +262,150 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.replace('/login');
       return;
     }
-    // Session invalid (401 survived the refresh interceptor) → bounce to login.
     if (meQuery.isError) {
       tokenStore.clear();
       router.replace('/login');
-      return;
     }
-    if (meQuery.data && !meQuery.data.isAdmin) {
-      alert('Admin huquqi kerak');
-      tokenStore.clear();
-      router.replace('/login');
-    }
-  }, [meQuery.data, meQuery.isError, router]);
+  }, [meQuery.isError, router]);
 
   if (!mounted || !tokenStore.access) return null;
-  // Don't flash the panel before we've confirmed the user is an admin.
-  if (meQuery.isLoading || !meQuery.data?.isAdmin) {
+
+  if (meQuery.isLoading || !admin) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background text-sm text-muted-foreground">
-        Yuklanmoqda…
+      <div className="flex h-screen items-center justify-center bg-background text-sm text-muted-foreground font-medium">
+        Xodim profili tekshirilmoqda…
       </div>
     );
   }
 
-  const active = NAV_ITEMS.find((i) => pathname.startsWith(i.href));
   const logout = () => {
     tokenStore.clear();
     router.replace('/login');
   };
 
+  const roleMeta = ROLE_LABELS[admin.role] || { label: admin.role, color: 'bg-muted text-foreground' };
+
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
-        <div className="flex items-center gap-3 px-5 py-5">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-base font-extrabold text-primary-foreground shadow-sm">
+    <div className="flex h-screen bg-background text-foreground overflow-hidden">
+      <Toaster />
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-64 flex-col border-r border-border bg-sidebar shrink-0">
+        <div className="flex h-16 items-center gap-3 border-b border-border px-5">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground shadow-sm">
             Y
           </div>
-          <div className="leading-tight">
-            <p className="text-sm font-bold text-sidebar-foreground">Yaqin Market</p>
-            <p className="text-xs text-muted-foreground">Admin panel</p>
+          <div>
+            <h2 className="text-sm font-bold tracking-tight">Yaqin Market</h2>
+            <p className="text-[0.7rem] text-muted-foreground font-medium">Boshqaruv Paneli</p>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
-          <NavGroups pathname={pathname} badgeCounts={badgeCounts} />
-        </nav>
+        <div className="flex-1 overflow-y-auto px-3 py-4 custom-scrollbar">
+          <NavGroups pathname={pathname} badgeCounts={badgeCounts} role={admin.role} />
+        </div>
 
-        <div className="border-t border-sidebar-border p-3">
-          <div className="mb-2 rounded-lg bg-sidebar-accent px-3 py-2">
-            <p className="text-xs font-medium text-sidebar-foreground">
-              {meQuery.data?.name ?? 'Admin'}
-            </p>
-            <p className="text-xs text-muted-foreground">{meQuery.data?.phone}</p>
+        {/* User Footer in Sidebar */}
+        <div className="border-t border-border p-3">
+          <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-2.5">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary font-bold text-xs uppercase">
+              {admin.firstName[0]}
+              {admin.lastName[0]}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold">
+                {admin.firstName} {admin.lastName}
+              </p>
+              <p className="truncate text-[0.65rem] text-muted-foreground font-mono">
+                @{admin.username}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+              onClick={logout}
+              title="Chiqish">
+              <LogOut className="size-3.5" />
+            </Button>
           </div>
-          <Button variant="outline" size="sm" className="w-full" onClick={logout}>
-            <LogOut className="size-4" />
-            Chiqish
-          </Button>
         </div>
       </aside>
 
-      {/* Main */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border bg-background/85 px-4 backdrop-blur sm:px-6">
-          <div className="flex items-center gap-2 min-w-0">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 md:hidden"
-              onClick={() => setMobileNavOpen(true)}
-              aria-label="Menyu">
-              <Menu className="size-5" />
-            </Button>
-            <div className="min-w-0">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Admin
-              </p>
-              <h2 className="truncate text-sm font-semibold text-foreground">{active?.label ?? 'Panel'}</h2>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground sm:flex">
-              <span className="text-foreground">{meQuery.data?.name ?? 'Admin'}</span>
-              <span className="h-3 w-px bg-border" />
-              <span>{meQuery.data?.phone}</span>
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto">{children}</main>
-      </div>
-
-      {/* Mobile nav drawer */}
+      {/* Mobile Drawer */}
       {mobileNavOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
-          <div
-            className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
-            onClick={() => setMobileNavOpen(false)}
-          />
-          <aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-sidebar-border bg-sidebar shadow-2xl">
-            <div className="flex items-center justify-between gap-3 px-5 py-5">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-base font-extrabold text-primary-foreground shadow-sm">
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setMobileNavOpen(false)} />
+          <aside className="relative flex w-72 flex-col bg-sidebar border-r border-border p-4 shadow-xl">
+            <div className="flex items-center justify-between pb-4 border-b border-border mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-8 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">
                   Y
                 </div>
-                <div className="leading-tight">
-                  <p className="text-sm font-bold text-sidebar-foreground">Yaqin Market</p>
-                  <p className="text-xs text-muted-foreground">Admin panel</p>
-                </div>
+                <span className="font-bold text-sm">Yaqin Market</span>
               </div>
-              <button
-                className="rounded-lg p-1.5 text-muted-foreground hover:bg-sidebar-accent"
-                onClick={() => setMobileNavOpen(false)}
-                aria-label="Yopish">
-                <X className="size-5" />
-              </button>
+              <Button variant="ghost" size="icon" className="size-8" onClick={() => setMobileNavOpen(false)}>
+                <X className="size-4" />
+              </Button>
             </div>
-
-            <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
-              <NavGroups pathname={pathname} badgeCounts={badgeCounts} onNavigate={() => setMobileNavOpen(false)} />
-            </nav>
-
-            <div className="border-t border-sidebar-border p-3">
-              <div className="mb-2 rounded-lg bg-sidebar-accent px-3 py-2">
-                <p className="text-xs font-medium text-sidebar-foreground">
-                  {meQuery.data?.name ?? 'Admin'}
-                </p>
-                <p className="text-xs text-muted-foreground">{meQuery.data?.phone}</p>
-              </div>
-              <Button variant="outline" size="sm" className="w-full" onClick={logout}>
-                <LogOut className="size-4" />
-                Chiqish
+            <div className="flex-1 overflow-y-auto">
+              <NavGroups
+                pathname={pathname}
+                badgeCounts={badgeCounts}
+                role={admin.role}
+                onNavigate={() => setMobileNavOpen(false)}
+              />
+            </div>
+            <div className="border-t border-border pt-3 mt-auto">
+              <Button variant="outline" className="w-full justify-start text-xs font-medium" onClick={logout}>
+                <LogOut className="mr-2 size-3.5" /> Chiqish
               </Button>
             </div>
           </aside>
         </div>
       )}
 
-      <Toaster />
+      {/* Main Content Area */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Top Navbar */}
+        <header className="flex h-14 items-center justify-between border-b border-border bg-background px-4 md:px-6 shrink-0">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden size-8"
+              onClick={() => setMobileNavOpen(true)}>
+              <Menu className="size-4" />
+            </Button>
+            <span className={cn('text-xs px-2.5 py-0.5 rounded-full border font-semibold', roleMeta.color)}>
+              {roleMeta.label}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <p className="text-xs font-semibold leading-none">
+                {admin.firstName} {admin.lastName}
+              </p>
+              <p className="text-[0.65rem] text-muted-foreground font-mono mt-0.5">
+                @{admin.username}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-8 text-muted-foreground hover:text-destructive"
+              onClick={logout}>
+              <LogOut className="size-3.5 mr-1.5" /> Chiqish
+            </Button>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/20">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

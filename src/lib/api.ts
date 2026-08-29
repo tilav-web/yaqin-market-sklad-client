@@ -50,13 +50,13 @@ let refreshPromise: Promise<string> | null = null;
 async function runRefresh(): Promise<string> {
   const rt = tokenStore.refresh;
   if (!rt) throw new Error('No refresh token');
-  const res = await axios.post<{ accessToken: string; refreshToken: string }>(
-    `${API_URL}/api/auth/refresh`,
+  const res = await axios.post<{ tokens: { accessToken: string; refreshToken: string } }>(
+    `${API_URL}/api/admin/auth/refresh`,
     { refreshToken: rt },
     { timeout: 15000 },
   );
-  tokenStore.save(res.data.accessToken, res.data.refreshToken);
-  return res.data.accessToken;
+  tokenStore.save(res.data.tokens.accessToken, res.data.tokens.refreshToken);
+  return res.data.tokens.accessToken;
 }
 
 api.interceptors.response.use(
