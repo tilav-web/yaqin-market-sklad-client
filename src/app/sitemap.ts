@@ -45,7 +45,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
-    const res = await fetch(`${apiUrl}/catalog/seo/sitemap-data`, {
+    const res = await fetch(`${apiUrl}/api/catalog/seo/sitemap-data`, {
       cache: 'no-store',
     });
     if (!res.ok) return staticRoutes;

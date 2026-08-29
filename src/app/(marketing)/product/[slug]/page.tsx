@@ -72,7 +72,7 @@ export const dynamic = 'force-static';
 export async function generateStaticParams() {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.yaqin-market.uz';
   try {
-    const res = await fetch(`${apiUrl}/catalog/seo/sitemap-data`, { cache: 'no-store' });
+    const res = await fetch(`${apiUrl}/api/catalog/seo/sitemap-data`, { cache: 'no-store' });
     if (!res.ok) return [{ slug: 'sample' }];
     const data = await res.json();
     const params = (data.products || [])
@@ -86,7 +86,7 @@ export async function generateStaticParams() {
 
 async function fetchProduct(slug: string): Promise<ProductDetail | null> {
   try {
-    const res = await fetch(`${API_URL}/catalog/global-products/by-slug/${encodeURIComponent(slug)}`, {
+    const res = await fetch(`${API_URL}/api/catalog/global-products/by-slug/${encodeURIComponent(slug)}`, {
       cache: 'no-store',
     });
     if (!res.ok) return null;
