@@ -124,34 +124,34 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 p-6 text-slate-100 selection:bg-blue-600 selection:text-white">
-      {/* Background ambient light */}
+    <main className="relative flex min-h-screen items-center justify-center bg-background p-6 text-foreground selection:bg-primary selection:text-primary-foreground overflow-hidden">
+      {/* Brand ambient lights (Yaqin Market Red / Crimson theme) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl" />
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-primary/15 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-rose-600/15 rounded-full blur-3xl" />
       </div>
 
-      <Card className="relative w-full max-w-md p-8 bg-slate-900/90 backdrop-blur-xl border border-slate-800 shadow-2xl rounded-2xl">
-        {/* Logo & Header */}
+      <Card className="relative w-full max-w-md p-8 bg-card/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl">
+        {/* Brand Logo & Header */}
         <div className="mb-6 flex items-center gap-3.5">
-          <div className="flex size-12 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-xl font-black text-white shadow-lg shadow-blue-500/25">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-xl font-black text-primary-foreground shadow-lg shadow-primary/30">
             Y
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">Yaqin Market</h1>
-            <p className="text-xs text-slate-400 font-medium">Boshqaruv va xodimlar paneli</p>
+            <h1 className="text-xl font-bold text-foreground tracking-tight">Yaqin Market</h1>
+            <p className="text-xs text-muted-foreground font-medium">Boshqaruv va xodimlar paneli</p>
           </div>
         </div>
 
         {/* Global Notifications */}
         {error ? (
-          <div className="mb-5 rounded-lg bg-red-500/10 border border-red-500/30 p-3 text-xs text-red-400 font-medium animate-in fade-in">
+          <div className="mb-5 rounded-lg bg-destructive/10 border border-destructive/30 p-3 text-xs text-destructive font-medium animate-in fade-in">
             {error}
           </div>
         ) : null}
 
         {successMsg ? (
-          <div className="mb-5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-xs text-emerald-400 font-medium animate-in fade-in flex items-center gap-2">
+          <div className="mb-5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 p-3 text-xs text-emerald-500 font-medium animate-in fade-in flex items-center gap-2">
             <ShieldCheck className="size-4 shrink-0" />
             <span>{successMsg}</span>
           </div>
@@ -161,25 +161,25 @@ export default function LoginPage() {
         {stage === 'login' && (
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Username
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-2.5 size-4 text-slate-400" />
+                <User className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
                 <Input
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="superadmin"
                   autoFocus
                   required
-                  className="pl-9 bg-slate-950/60 border-slate-800 focus:border-blue-500 text-slate-100 placeholder:text-slate-600 h-10"
+                  className="pl-9 bg-background/80 border-input focus-visible:border-primary focus-visible:ring-primary/20 text-foreground placeholder:text-muted-foreground h-10 text-xs"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Parol
                 </label>
                 <button
@@ -189,24 +189,24 @@ export default function LoginPage() {
                     setError(null);
                     setSuccessMsg(null);
                   }}
-                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium">
+                  className="text-xs text-primary hover:text-primary/80 transition-colors font-medium">
                   Parolni unutdingizmi?
                 </button>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-2.5 size-4 text-slate-400" />
+                <Lock className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
                 <Input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="pl-9 pr-10 bg-slate-950/60 border-slate-800 focus:border-blue-500 text-slate-100 placeholder:text-slate-600 h-10"
+                  className="pl-9 pr-10 bg-background/80 border-input focus-visible:border-primary focus-visible:ring-primary/20 text-foreground placeholder:text-muted-foreground h-10 text-xs font-mono"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200">
+                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground">
                   {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
@@ -214,7 +214,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium h-10 rounded-lg shadow-lg shadow-blue-600/20 mt-2 transition-all"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10 rounded-lg shadow-lg shadow-primary/25 mt-2 transition-all text-xs"
               disabled={!username.trim() || !password || loginMutation.isPending}>
               {loginMutation.isPending ? 'Kirilmoqda…' : 'Tizimga kirish'}
             </Button>
@@ -224,30 +224,30 @@ export default function LoginPage() {
         {/* STAGE 2: Forgot Password - Request SMS OTP */}
         {stage === 'forgot_request' && (
           <form onSubmit={handleRequestOtpSubmit} className="space-y-4">
-            <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3 text-xs text-blue-300">
+            <div className="rounded-lg bg-primary/10 border border-primary/20 p-3 text-xs text-primary">
               Profilga biriktirilgan <strong>Username</strong> yoki <strong>Telefon raqamingizni</strong> kiriting. Sizga parolni tiklash uchun SMS kod yuboriladi.
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Username yoki Telefon
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-2.5 size-4 text-slate-400" />
+                <User className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
                 <Input
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="admin yoki +998901234567"
+                  placeholder="superadmin yoki +998901234567"
                   autoFocus
                   required
-                  className="pl-9 bg-slate-950/60 border-slate-800 focus:border-blue-500 text-slate-100 placeholder:text-slate-600 h-10"
+                  className="pl-9 bg-background/80 border-input focus-visible:border-primary focus-visible:ring-primary/20 text-foreground placeholder:text-muted-foreground h-10 text-xs"
                 />
               </div>
             </div>
 
             <Button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium h-10 rounded-lg shadow-lg shadow-blue-600/20"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10 rounded-lg shadow-lg shadow-primary/25 text-xs"
               disabled={!identifier.trim() || requestOtpMutation.isPending}>
               {requestOtpMutation.isPending ? 'SMS yuborilmoqda…' : 'SMS tasdiq kodini olish'}
             </Button>
@@ -256,7 +256,7 @@ export default function LoginPage() {
               type="button"
               variant="ghost"
               size="sm"
-              className="w-full text-slate-400 hover:text-slate-200"
+              className="w-full text-muted-foreground hover:text-foreground text-xs"
               onClick={() => {
                 setStage('login');
                 setError(null);
@@ -270,16 +270,16 @@ export default function LoginPage() {
         {/* STAGE 3: Forgot Password - Verify OTP & Set New Password */}
         {stage === 'forgot_reset' && (
           <form onSubmit={handleResetSubmit} className="space-y-4">
-            <div className="rounded-lg bg-slate-800/60 border border-slate-700 p-3 text-xs text-slate-300 space-y-1">
-              <div className="flex items-center gap-1.5 text-blue-400 font-semibold">
+            <div className="rounded-lg bg-muted/60 border border-border p-3 text-xs text-foreground space-y-1">
+              <div className="flex items-center gap-1.5 text-primary font-semibold">
                 <Phone className="size-3.5" />
                 <span>SMS yuborildi</span>
               </div>
-              <p>Raqam: {maskedPhone || identifier}</p>
+              <p className="text-muted-foreground text-[0.7rem]">Raqam: {maskedPhone || identifier}</p>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 6 xonali SMS kod
               </label>
               <InputOTP
@@ -290,59 +290,59 @@ export default function LoginPage() {
                 autoFocus
                 containerClassName="justify-center">
                 <InputOTPGroup>
-                  <InputOTPSlot index={0} className="border-slate-700 bg-slate-950 text-white text-lg" />
-                  <InputOTPSlot index={1} className="border-slate-700 bg-slate-950 text-white text-lg" />
-                  <InputOTPSlot index={2} className="border-slate-700 bg-slate-950 text-white text-lg" />
-                  <InputOTPSlot index={3} className="border-slate-700 bg-slate-950 text-white text-lg" />
-                  <InputOTPSlot index={4} className="border-slate-700 bg-slate-950 text-white text-lg" />
-                  <InputOTPSlot index={5} className="border-slate-700 bg-slate-950 text-white text-lg" />
+                  <InputOTPSlot index={0} className="border-border bg-background text-foreground text-base" />
+                  <InputOTPSlot index={1} className="border-border bg-background text-foreground text-base" />
+                  <InputOTPSlot index={2} className="border-border bg-background text-foreground text-base" />
+                  <InputOTPSlot index={3} className="border-border bg-background text-foreground text-base" />
+                  <InputOTPSlot index={4} className="border-border bg-background text-foreground text-base" />
+                  <InputOTPSlot index={5} className="border-border bg-background text-foreground text-base" />
                 </InputOTPGroup>
               </InputOTP>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Yangi Parol
               </label>
               <div className="relative">
-                <KeyRound className="absolute left-3 top-2.5 size-4 text-slate-400" />
+                <KeyRound className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
                 <Input
                   type={showNewPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Kamida 6 ta belgi"
                   required
-                  className="pl-9 pr-10 bg-slate-950/60 border-slate-800 focus:border-blue-500 text-slate-100 placeholder:text-slate-600 h-10"
+                  className="pl-9 pr-10 bg-background/80 border-input focus-visible:border-primary focus-visible:ring-primary/20 text-foreground placeholder:text-muted-foreground h-10 text-xs font-mono"
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200">
+                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground">
                   {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Yangi Parolni Tasdiqlang
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-2.5 size-4 text-slate-400" />
+                <Lock className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
                 <Input
                   type={showNewPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Parolni qayta kiriting"
                   required
-                  className="pl-9 bg-slate-950/60 border-slate-800 focus:border-blue-500 text-slate-100 placeholder:text-slate-600 h-10"
+                  className="pl-9 bg-background/80 border-input focus-visible:border-primary focus-visible:ring-primary/20 text-foreground placeholder:text-muted-foreground h-10 text-xs font-mono"
                 />
               </div>
             </div>
 
             <Button
               type="submit"
-              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium h-10 rounded-lg shadow-lg shadow-emerald-600/20"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-10 rounded-lg shadow-lg shadow-primary/25 text-xs"
               disabled={resetCode.length !== 6 || !newPassword || resetPasswordMutation.isPending}>
               {resetPasswordMutation.isPending ? 'Yangilanmoqda…' : 'Parolni yangilash va kirish'}
             </Button>
@@ -351,7 +351,7 @@ export default function LoginPage() {
               type="button"
               variant="ghost"
               size="sm"
-              className="w-full text-slate-400 hover:text-slate-200"
+              className="w-full text-muted-foreground hover:text-foreground text-xs"
               onClick={() => {
                 setStage('forgot_request');
                 setError(null);
