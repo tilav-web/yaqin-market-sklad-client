@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useReducer, useState } from 'react';
 
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
@@ -9,7 +9,9 @@ import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
+import { I18nInput } from '@/components/ui/i18n-input';
 import { api, extractErrorMessage } from '@/lib/api';
+import { latinToCyrillic } from '@/lib/transliteration';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { toast } from '@/stores/toast';
 
@@ -43,13 +45,19 @@ type FormAction =
   | { type: 'CLOSE_EDIT' };
 
 const FORM_INIT: FormState = {
-  open: false, parentId: null, slug: '', nameUzLatn: '', nameUzCyrl: '', nameRu: '', editing: null,
+  open: false,
+  parentId: null,
+  slug: '',
+  nameUzLatn: '',
+  nameUzCyrl: '',
+  nameRu: '',
+  editing: null,
 };
 
 function formReducer(state: FormState, action: FormAction): FormState {
   switch (action.type) {
     case 'OPEN_CREATE':
-      return { ...state, open: true, parentId: action.parentId ?? null };
+      return { ...FORM_INIT, open: true, parentId: action.parentId ?? null };
     case 'CLOSE':
       return { ...FORM_INIT, editing: state.editing };
     case 'SET':
@@ -79,9 +87,17 @@ export default function CategoriesPage() {
 
   const create = useMutation({
     mutationFn: async () => {
+      const slug = (form.slug.trim() || form.nameUzLatn.trim())
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+
       await api.post('/categories', {
-        slug: form.slug, nameUzLatn: form.nameUzLatn, nameUzCyrl: form.nameUzCyrl,
-        nameRu: form.nameRu, parentId: form.parentId ?? undefined,
+        slug: slug || `cat-${Date.now().toString(36)}`,
+        nameUzLatn: form.nameUzLatn.trim(),
+        nameUzCyrl: form.nameUzCyrl.trim() || latinToCyrillic(form.nameUzLatn),
+        nameRu: form.nameRu.trim() || form.nameUzLatn.trim(),
+        parentId: form.parentId ?? undefined,
       });
     },
     onSuccess: () => {
@@ -94,7 +110,9 @@ export default function CategoriesPage() {
   });
 
   const remove = useMutation({
-    mutationFn: async (id: string) => { await api.delete(`/categories/${id}`); },
+    mutationFn: async (id: string) => {
+      await api.delete(`/categories/${id}`);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'categories', 'all'] });
       setPendingDelete(null);
@@ -115,98 +133,165 @@ export default function CategoriesPage() {
   });
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <PageHeader
-        eyebrow="Katalog"
         title="Kategoriyalar"
-        description="Mahsulot kategoriyalari daraxti — uch tilda."
+        description="Mahsulot kategoriyalari daraxti — 3 ta tilda boshqarish"
         actions={
-          <Button onClick={() => dispatch({ type: 'OPEN_CREATE' })}>
-            <Plus className="size-4" />
-            Yangi kategoriya
+          <Button
+            size="sm"
+            onClick={() => dispatch({ type: 'OPEN_CREATE' })}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-9">
+            <Plus className="size-4 mr-1.5" /> Yangi kategoriya
           </Button>
         }
       />
 
-      <Card className="p-3">
+      <Card className="p-3 bg-card border-border shadow-xs">
         {listErr && !form.editing && (
-          <p className="mb-2 rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{listErr}</p>
+          <p className="mb-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive font-medium">{listErr}</p>
         )}
         {treeQuery.isError ? (
-          <p className="px-3 py-10 text-center text-sm text-destructive">
+          <p className="px-3 py-10 text-center text-xs text-destructive">
             {extractErrorMessage(treeQuery.error)} —{' '}
-            <button className="underline" onClick={() => treeQuery.refetch()}>qayta urinish</button>
+            <button className="underline" onClick={() => treeQuery.refetch()}>
+              qayta urinish
+            </button>
           </p>
         ) : treeQuery.data && treeQuery.data.length > 0 ? (
           <CategoryList
             items={treeQuery.data}
-            onAddChild={(id) => { setListErr(''); dispatch({ type: 'OPEN_CREATE', parentId: id }); }}
-            onEdit={(c) => { setListErr(''); dispatch({ type: 'OPEN_EDIT', category: c }); }}
+            onAddChild={(id) => {
+              setListErr('');
+              dispatch({ type: 'OPEN_CREATE', parentId: id });
+            }}
+            onEdit={(c) => {
+              setListErr('');
+              dispatch({ type: 'OPEN_EDIT', category: c });
+            }}
             onToggleActive={(c) => update.mutate({ id: c.id, patch: { isActive: !c.isActive } })}
-            onDelete={(c) => { setListErr(''); setPendingDelete(c); }}
+            onDelete={(c) => setPendingDelete(c)}
           />
         ) : (
-          <p className="px-3 py-10 text-center text-sm text-muted-foreground">
+          <p className="px-3 py-10 text-center text-xs text-muted-foreground">
             {treeQuery.isLoading ? 'Yuklanmoqda…' : "Kategoriya yo'q"}
           </p>
         )}
       </Card>
 
+      {/* CREATE MODAL */}
       {form.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
-          <Card className="w-full max-w-md space-y-3 p-6">
-            <h2 className="text-lg font-bold text-foreground">Yangi kategoriya</h2>
-            {form.parentId && <p className="text-xs text-muted-foreground">Ota kategoriya tanlangan</p>}
-            <Field label="Slug (URL)">
-              <Input value={form.slug} onChange={(e) => dispatch({ type: 'SET', field: 'slug', value: e.target.value })} placeholder="oziq-ovqat" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+          <Card className="w-full max-w-md space-y-4 p-6 bg-card border-border shadow-2xl rounded-xl">
+            <div className="flex items-center justify-between border-b border-border pb-2.5">
+              <h2 className="text-base font-bold text-foreground">
+                {form.parentId ? 'Yangi pastki kategoriya' : 'Yangi kategoriya'}
+              </h2>
+              <button
+                onClick={() => dispatch({ type: 'CLOSE' })}
+                className="text-muted-foreground hover:text-foreground">
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <I18nInput
+              label="Kategoriya Nomi"
+              required
+              placeholder="Masalan: Sut mahsulotlari"
+              value={{
+                uz: form.nameUzLatn,
+                kr: form.nameUzCyrl,
+                ru: form.nameRu,
+              }}
+              onChange={(val) => {
+                dispatch({ type: 'SET', field: 'nameUzLatn', value: val.uz });
+                dispatch({ type: 'SET', field: 'nameUzCyrl', value: val.kr });
+                dispatch({ type: 'SET', field: 'nameRu', value: val.ru });
+                if (!form.slug) {
+                  const autoSlug = val.uz
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)/g, '');
+                  dispatch({ type: 'SET', field: 'slug', value: autoSlug });
+                }
+              }}
+            />
+
+            <Field label="Slug (URL kalit)">
+              <Input
+                value={form.slug}
+                onChange={(e) => dispatch({ type: 'SET', field: 'slug', value: e.target.value })}
+                placeholder="sut-mahsulotlari"
+                className="h-8.5 text-xs font-mono"
+              />
             </Field>
-            <Field label="Nomi (lotin)">
-              <Input value={form.nameUzLatn} onChange={(e) => dispatch({ type: 'SET', field: 'nameUzLatn', value: e.target.value })} placeholder="Oziq-ovqat" />
-            </Field>
-            <Field label="Nomi (kirill)">
-              <Input value={form.nameUzCyrl} onChange={(e) => dispatch({ type: 'SET', field: 'nameUzCyrl', value: e.target.value })} placeholder="Озиқ-овқат" />
-            </Field>
-            <Field label="Nomi (русский)">
-              <Input value={form.nameRu} onChange={(e) => dispatch({ type: 'SET', field: 'nameRu', value: e.target.value })} placeholder="Продукты" />
-            </Field>
-            {formErr && <p className="text-xs text-destructive">{formErr}</p>}
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="ghost" size="sm" onClick={() => { dispatch({ type: 'CLOSE' }); setFormErr(''); }}>Bekor</Button>
-              <Button size="sm"
-                disabled={!form.slug || !form.nameUzLatn || !form.nameUzCyrl || !form.nameRu || create.isPending}
-                onClick={() => create.mutate()}>
-                Saqlash
+
+            {formErr && <p className="text-xs text-destructive font-medium">{formErr}</p>}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  dispatch({ type: 'CLOSE' });
+                  setFormErr('');
+                }}>
+                Bekor qilish
+              </Button>
+              <Button
+                size="sm"
+                disabled={!form.nameUzLatn.trim() || create.isPending}
+                onClick={() => create.mutate()}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+                {create.isPending ? 'Saqlanmoqda…' : 'Saqlash'}
               </Button>
             </div>
           </Card>
         </div>
       )}
 
+      {/* EDIT MODAL */}
       {form.editing && (
         <EditCategoryModal
           category={form.editing}
           pending={update.isPending}
           error={listErr}
-          onClose={() => { dispatch({ type: 'CLOSE_EDIT' }); setListErr(''); }}
-          onSave={(patch) => update.mutate({ id: form.editing!.id, patch }, {
-            onSuccess: () => { dispatch({ type: 'CLOSE_EDIT' }); setListErr(''); },
-          })}
+          onClose={() => {
+            dispatch({ type: 'CLOSE_EDIT' });
+            setListErr('');
+          }}
+          onSave={(patch) =>
+            update.mutate(
+              { id: form.editing!.id, patch },
+              {
+                onSuccess: () => {
+                  dispatch({ type: 'CLOSE_EDIT' });
+                  setListErr('');
+                },
+              },
+            )
+          }
         />
       )}
 
       <ConfirmDialog
         open={!!pendingDelete}
         title="Kategoriyani o'chirish"
-        description={pendingDelete && (
-          <div className="space-y-1">
-            <p>Kategoriya: <span className="font-semibold text-foreground">{pendingDelete.nameUzLatn}</span></p>
-            {pendingDelete.children && pendingDelete.children.length > 0 && (
-              <p className="mt-2 text-destructive">
-                Bu kategoriyaning {pendingDelete.children.length} ta pastki kategoriyasi bor — ular o&apos;chirilmaydi, lekin ota-kategoriyasiz (ildiz darajasida) qoladi.
+        description={
+          pendingDelete && (
+            <div className="space-y-1 text-xs">
+              <p>
+                Kategoriya: <span className="font-semibold text-foreground">{pendingDelete.nameUzLatn}</span>
               </p>
-            )}
-          </div>
-        )}
+              {pendingDelete.children && pendingDelete.children.length > 0 && (
+                <p className="mt-2 text-destructive font-medium">
+                  Bu kategoriyaning {pendingDelete.children.length} ta pastki kategoriyasi bor — ular o&apos;chirilmaydi,
+                  lekin ota-kategoriyasiz qoladi.
+                </p>
+              )}
+            </div>
+          )
+        }
         confirmLabel="Ha, o'chirish"
         pending={remove.isPending}
         error={listErr}
@@ -218,7 +303,12 @@ export default function CategoriesPage() {
 }
 
 function CategoryList({
-  items, depth = 0, onAddChild, onEdit, onToggleActive, onDelete,
+  items,
+  depth = 0,
+  onAddChild,
+  onEdit,
+  onToggleActive,
+  onDelete,
 }: {
   items: Category[];
   depth?: number;
@@ -232,32 +322,44 @@ function CategoryList({
       {items.map((c) => (
         <li key={c.id}>
           <div
-            className="group flex items-center justify-between rounded-lg px-3 py-2.5 transition-colors hover:bg-muted"
-            style={{ paddingLeft: 12 + depth * 22 }}>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-foreground">{c.nameUzLatn}</span>
-              <span className="text-xs text-muted-foreground">/{c.slug}</span>
-              {!c.isActive && <Badge variant="neutral">O&apos;chirilgan</Badge>}
+            className="group flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-muted/40"
+            style={{ paddingLeft: 12 + depth * 20 }}>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs font-semibold text-foreground truncate">{c.nameUzLatn}</span>
+              {c.nameRu && c.nameRu !== c.nameUzLatn && (
+                <span className="text-[0.65rem] text-muted-foreground truncate">({c.nameRu})</span>
+              )}
+              <span className="text-[0.65rem] font-mono text-muted-foreground">/{c.slug}</span>
+              {!c.isActive && (
+                <Badge variant="neutral" className="text-[0.65rem]">
+                  O&apos;chirilgan
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              <Button variant="ghost" size="sm" onClick={() => onToggleActive(c)}>
+              <Button variant="ghost" size="sm" onClick={() => onToggleActive(c)} className="text-[0.7rem] h-7 px-2">
                 {c.isActive ? 'Yashirish' : "Ko'rsatish"}
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => onAddChild(c.id)}>
-                <Plus className="size-3.5" /> Pastki
+              <Button variant="ghost" size="sm" onClick={() => onAddChild(c.id)} className="text-[0.7rem] h-7 px-2">
+                <Plus className="size-3 mr-1" /> Pastki
               </Button>
-              <Button variant="ghost" size="icon-sm" onClick={() => onEdit(c)}>
-                <Pencil className="size-4" />
+              <Button variant="ghost" size="icon" className="size-7" onClick={() => onEdit(c)}>
+                <Pencil className="size-3.5" />
               </Button>
-              <Button variant="ghost" size="icon-sm"
-                onClick={() => onDelete(c)}>
-                <Trash2 className="size-4 text-destructive" />
+              <Button variant="ghost" size="icon" className="size-7 text-destructive" onClick={() => onDelete(c)}>
+                <Trash2 className="size-3.5" />
               </Button>
             </div>
           </div>
           {c.children && c.children.length > 0 && (
-            <CategoryList items={c.children} depth={depth + 1}
-              onAddChild={onAddChild} onEdit={onEdit} onToggleActive={onToggleActive} onDelete={onDelete} />
+            <CategoryList
+              items={c.children}
+              depth={depth + 1}
+              onAddChild={onAddChild}
+              onEdit={onEdit}
+              onToggleActive={onToggleActive}
+              onDelete={onDelete}
+            />
           )}
         </li>
       ))}
@@ -265,47 +367,86 @@ function CategoryList({
   );
 }
 
-/* ─── Edit modal — own reducer ─── */
-interface EditState { slug: string; nameUzLatn: string; nameUzCyrl: string; nameRu: string; sortOrder: string }
-type EditAction = { type: 'SET'; field: keyof EditState; value: string };
-
-function editReducer(state: EditState, action: EditAction): EditState {
-  return { ...state, [action.field]: action.value };
-}
-
-function EditCategoryModal({ category, pending, error, onClose, onSave }: {
+function EditCategoryModal({
+  category,
+  pending,
+  error,
+  onClose,
+  onSave,
+}: {
   category: Category;
   pending: boolean;
   error?: string;
   onClose: () => void;
   onSave: (patch: Partial<Category>) => void;
 }) {
-  const [state, dispatch] = useReducer(editReducer, {
-    slug: category.slug,
-    nameUzLatn: category.nameUzLatn,
-    nameUzCyrl: category.nameUzCyrl,
-    nameRu: category.nameRu,
-    sortOrder: String(category.sortOrder),
-  });
-  const set = (field: keyof EditState) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    dispatch({ type: 'SET', field, value: e.target.value });
+  const [nameUzLatn, setNameUzLatn] = useState(category.nameUzLatn);
+  const [nameUzCyrl, setNameUzCyrl] = useState(category.nameUzCyrl);
+  const [nameRu, setNameRu] = useState(category.nameRu);
+  const [slug, setSlug] = useState(category.slug);
+  const [sortOrder, setSortOrder] = useState(String(category.sortOrder));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
-      <Card className="w-full max-w-md space-y-3 p-6">
-        <h2 className="text-lg font-bold text-foreground">Kategoriyani tahrirlash</h2>
-        <Field label="Slug (URL)"><Input value={state.slug} onChange={set('slug')} /></Field>
-        <Field label="Nomi (lotin)"><Input value={state.nameUzLatn} onChange={set('nameUzLatn')} /></Field>
-        <Field label="Nomi (kirill)"><Input value={state.nameUzCyrl} onChange={set('nameUzCyrl')} /></Field>
-        <Field label="Nomi (русский)"><Input value={state.nameRu} onChange={set('nameRu')} /></Field>
-        <Field label="Tartib raqami"><Input type="number" value={state.sortOrder} onChange={set('sortOrder')} /></Field>
-        {error && <p className="text-xs text-destructive">{error}</p>}
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" size="sm" onClick={onClose}>Bekor</Button>
-          <Button size="sm"
-            disabled={!state.slug || !state.nameUzLatn || !state.nameUzCyrl || !state.nameRu || pending}
-            onClick={() => onSave({ slug: state.slug, nameUzLatn: state.nameUzLatn, nameUzCyrl: state.nameUzCyrl, nameRu: state.nameRu, sortOrder: Number(state.sortOrder) || 0 })}>
-            Saqlash
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+      <Card className="w-full max-w-md space-y-4 p-6 bg-card border-border shadow-2xl rounded-xl">
+        <div className="flex items-center justify-between border-b border-border pb-2.5">
+          <h2 className="text-base font-bold text-foreground">Kategoriyani tahrirlash</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <I18nInput
+          label="Kategoriya Nomi"
+          required
+          value={{
+            uz: nameUzLatn,
+            kr: nameUzCyrl,
+            ru: nameRu,
+          }}
+          onChange={(val) => {
+            setNameUzLatn(val.uz);
+            setNameUzCyrl(val.kr);
+            setNameRu(val.ru);
+          }}
+        />
+
+        <Field label="Slug (URL)">
+          <Input
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            className="h-8.5 text-xs font-mono"
+          />
+        </Field>
+        <Field label="Tartib raqami">
+          <Input
+            type="number"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            className="h-8.5 text-xs"
+          />
+        </Field>
+
+        {error && <p className="text-xs text-destructive font-medium">{error}</p>}
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-border">
+          <Button variant="outline" size="sm" onClick={onClose}>
+            Bekor qilish
+          </Button>
+          <Button
+            size="sm"
+            disabled={!slug.trim() || !nameUzLatn.trim() || pending}
+            onClick={() =>
+              onSave({
+                slug: slug.trim(),
+                nameUzLatn: nameUzLatn.trim(),
+                nameUzCyrl: nameUzCyrl.trim() || latinToCyrillic(nameUzLatn),
+                nameRu: nameRu.trim() || nameUzLatn.trim(),
+                sortOrder: Number(sortOrder) || 0,
+              })
+            }
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+            {pending ? 'Saqlanmoqda…' : 'Saqlash'}
           </Button>
         </div>
       </Card>
@@ -316,7 +457,7 @@ function EditCategoryModal({ category, pending, error, onClose, onSave }: {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-sm font-medium text-foreground">{label}</label>
+      <label className="text-xs font-semibold text-foreground">{label}</label>
       {children}
     </div>
   );
