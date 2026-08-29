@@ -8,6 +8,7 @@ import {
   Download,
   Eye,
   FolderPlus,
+  Globe,
   Package,
   Pencil,
   Plus,
@@ -27,6 +28,7 @@ import { I18nInput, I18nValue } from '@/components/ui/i18n-input';
 import { SearchSelect, SearchSelectOption } from '@/components/ui/search-select';
 import { api, downloadFile, extractErrorMessage } from '@/lib/api';
 import { latinToCyrillic } from '@/lib/transliteration';
+import { slugify } from '@/lib/slug';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { toast } from '@/stores/toast';
 
@@ -102,6 +104,7 @@ function UsageModal({ product, onClose }: { product: GlobalProduct; onClose: () 
 
 interface GlobalProduct {
   id: string;
+  slug?: string;
   barcode: string | null;
   name: string;
   nameUzLatn?: string;
@@ -154,6 +157,8 @@ const UNIT_LABELS: Record<string, string> = {
 interface FormState {
   open: boolean;
   editing: GlobalProduct | null;
+  slug: string;
+  slugEdited: boolean;
   nameUzLatn: string;
   nameUzCyrl: string;
   nameRu: string;
@@ -179,6 +184,8 @@ type FormAction =
 const FORM_INIT: FormState = {
   open: false,
   editing: null,
+  slug: '',
+  slugEdited: false,
   nameUzLatn: '',
   nameUzCyrl: '',
   nameRu: '',
@@ -203,6 +210,8 @@ function formReducer(state: FormState, action: FormAction): FormState {
       return {
         open: true,
         editing: action.p,
+        slug: action.p.slug || slugify(action.p.nameUzLatn || action.p.name),
+        slugEdited: !!action.p.slug,
         nameUzLatn: action.p.nameUzLatn || action.p.name,
         nameUzCyrl: action.p.nameUzCyrl || latinToCyrillic(action.p.nameUzLatn || action.p.name),
         nameRu: action.p.nameRu || '',
@@ -334,6 +343,7 @@ export default function CatalogPage() {
         nameUzLatn,
         nameUzCyrl: form.nameUzCyrl.trim() || latinToCyrillic(nameUzLatn),
         nameRu: form.nameRu.trim() || nameUzLatn,
+        slug: form.slug.trim() || undefined,
         description: form.descriptionUzLatn.trim() || undefined,
         descriptionUzLatn: form.descriptionUzLatn.trim() || undefined,
         descriptionUzCyrl: form.descriptionUzCyrl.trim() || undefined,
@@ -487,6 +497,17 @@ export default function CatalogPage() {
                     </p>
                   </div>
                   <div className="text-right shrink-0 flex items-center gap-2">
+                    {p.slug && (
+                      <a
+                        href={`/product/${p.slug}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Veb-saytdagi sahifani ochish"
+                        className="flex items-center gap-1 text-[0.7rem] text-muted-foreground hover:text-primary rounded px-1.5 py-1 hover:bg-muted transition-colors">
+                        <Globe className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">SEO sahifa</span>
+                      </a>
+                    )}
                     <button
                       title="Do'konlar bo'yicha ko'rish"
                       onClick={() => setUsageProduct(p)}
@@ -571,8 +592,35 @@ export default function CatalogPage() {
                   dispatch({ type: 'SET', field: 'nameUzLatn', value: val.uz });
                   dispatch({ type: 'SET', field: 'nameUzCyrl', value: val.kr });
                   dispatch({ type: 'SET', field: 'nameRu', value: val.ru });
+                  if (!form.slugEdited) {
+                    dispatch({ type: 'SET', field: 'slug', value: slugify(val.uz) });
+                  }
                 }}
               />
+
+              {/* SEO Friendly URL / Slug */}
+              <div className="space-y-1 rounded-xl border border-border/80 bg-muted/20 p-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Globe className="size-3.5 text-primary" /> SEO URL (Slug)
+                  </label>
+                  <span className="text-[0.65rem] text-muted-foreground font-mono">
+                    https://yaqin-market.uz/product/{form.slug || 'nomi'}
+                  </span>
+                </div>
+                <Input
+                  value={form.slug}
+                  onChange={(e) => {
+                    dispatch({ type: 'SET', field: 'slugEdited', value: true });
+                    dispatch({ type: 'SET', field: 'slug', value: slugify(e.target.value) });
+                  }}
+                  placeholder="masalan: coca-cola-1-5l"
+                  className="h-8 text-xs font-mono"
+                />
+                <p className="text-[0.65rem] text-muted-foreground">
+                  Google va Yandex qidiruvida chiqish uchun toza lotin harflari va defislardan iborat manzil.
+                </p>
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Brend">
