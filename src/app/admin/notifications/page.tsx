@@ -178,24 +178,26 @@ function TemplateManager({
       {templates.map((t) => {
         const isExp = expandedId === t.id;
         const isEd = editingId === t.id;
+        const titleStr = typeof t.title === 'object' ? (t.title as any)?.uz || '' : t.title;
+        const bodyStr = typeof t.body === 'object' ? (t.body as any)?.uz || '' : t.body;
         return (
           <div key={t.id} className={`rounded-lg border overflow-hidden transition-colors ${selectedId === t.id ? 'border-primary' : 'border-border'}`}>
             <button className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-muted/30 transition-colors"
               onClick={() => { setExpandedId(isExp ? null : t.id); if (isEd) setEditingId(null); }}>
               <div className="min-w-0">
                 <p className="text-sm font-medium">{t.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{t.title}</p>
+                <p className="truncate text-xs text-muted-foreground">{titleStr}</p>
               </div>
               {isExp ? <ChevronUp className="size-4 shrink-0 text-muted-foreground" /> : <ChevronDown className="size-4 shrink-0 text-muted-foreground" />}
             </button>
 
             {isExp && !isEd && (
               <div className="border-t border-border px-3 py-3 space-y-2 bg-muted/10 text-sm">
-                <p className="font-semibold">{t.title}</p>
+                <p className="font-semibold">{titleStr}</p>
                 {t.richBody
                   ? <div className="prose prose-sm max-w-none [&_h1]:text-base [&_h1]:font-bold [&_h2]:font-bold [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_a]:text-primary [&_img]:rounded [&_img]:max-h-32"
                       dangerouslySetInnerHTML={{ __html: sanitizeHtml(t.richBody) }} />
-                  : <p className="text-muted-foreground">{t.body}</p>}
+                  : <p className="text-muted-foreground">{bodyStr}</p>}
                 {t.imageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={`${API_URL}${t.imageUrl}`} alt="" className="h-20 rounded object-cover border border-border" />
@@ -203,7 +205,7 @@ function TemplateManager({
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Button size="sm" onClick={() => { onSelect(t); setExpandedId(null); }}><Send className="size-3.5" /> Tanlash</Button>
                   <Button size="sm" variant="outline"
-                    onClick={() => { setEditingId(t.id); setEditFields({ name: t.name, title: t.title, richBody: t.richBody ?? t.body, imageUrl: t.imageUrl ?? '' }); }}>
+                    onClick={() => { setEditingId(t.id); setEditFields({ name: t.name, title: titleStr, richBody: t.richBody ?? bodyStr, imageUrl: t.imageUrl ?? '' }); }}>
                     <Edit2 className="size-3.5" /> Tahrirlash
                   </Button>
                   <Button size="sm" variant="outline" className="text-destructive hover:text-destructive"

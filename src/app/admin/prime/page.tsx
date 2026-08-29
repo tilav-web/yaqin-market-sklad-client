@@ -9,7 +9,9 @@ import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
+import { I18nInput, I18nValue } from '@/components/ui/i18n-input';
 import { api, extractErrorMessage } from '@/lib/api';
+import { latinToCyrillic } from '@/lib/transliteration';
 import { toast } from '@/stores/toast';
 
 interface RevenueStats {
@@ -22,13 +24,20 @@ interface RevenueStats {
 interface PrimePlan {
   id: string;
   name: string;
+  nameUzLatn?: string;
+  nameUzCyrl?: string;
+  nameRu?: string;
   monthlyPrice: string;
   yearlyPrice: string | null;
   commissionRate: string;
   description: string | null;
+  descriptionUzLatn?: string | null;
+  descriptionUzCyrl?: string | null;
+  descriptionRu?: string | null;
   isActive: boolean;
   sortOrder: number;
 }
+
 interface Subscription {
   id: string;
   sellerId: string;
@@ -42,7 +51,14 @@ interface Subscription {
   seller: { id: string; name: string | null; phone: string } | null;
 }
 
-const EMPTY_FORM = { name: '', monthlyPrice: '', yearlyPrice: '', commissionRate: '', description: '', sortOrder: '0' };
+const EMPTY_FORM = {
+  name: { uz: '', kr: '', ru: '' } as I18nValue,
+  monthlyPrice: '',
+  yearlyPrice: '',
+  commissionRate: '',
+  description: { uz: '', kr: '', ru: '' } as I18nValue,
+  sortOrder: '0',
+};
 
 const fmt = (v: string) => Number(v).toLocaleString('uz-UZ') + " so'm";
 
@@ -71,12 +87,19 @@ export default function AdminPrimePage() {
 
   const save = useMutation({
     mutationFn: async () => {
+      const nameUzLatn = form.name.uz.trim();
       const body = {
-        name: form.name,
+        name: nameUzLatn,
+        nameUzLatn,
+        nameUzCyrl: form.name.kr?.trim() || latinToCyrillic(nameUzLatn),
+        nameRu: form.name.ru?.trim() || nameUzLatn,
         monthlyPrice: form.monthlyPrice,
         yearlyPrice: form.yearlyPrice || null,
         commissionRate: form.commissionRate,
-        description: form.description || null,
+        description: form.description.uz.trim() || null,
+        descriptionUzLatn: form.description.uz.trim() || null,
+        descriptionUzCyrl: form.description.kr?.trim() || (form.description.uz.trim() ? latinToCyrillic(form.description.uz.trim()) : null),
+        descriptionRu: form.description.ru?.trim() || form.description.uz.trim() || null,
         sortOrder: Number(form.sortOrder),
       };
       if (editing) return api.put(`/admin/prime/plans/${editing}`, body);
@@ -133,11 +156,19 @@ export default function AdminPrimePage() {
   const startEdit = (p: PrimePlan) => {
     setEditing(p.id);
     setForm({
-      name: p.name,
+      name: {
+        uz: p.nameUzLatn || p.name,
+        kr: p.nameUzCyrl || latinToCyrillic(p.nameUzLatn || p.name),
+        ru: p.nameRu || '',
+      },
       monthlyPrice: p.monthlyPrice,
       yearlyPrice: p.yearlyPrice ?? '',
       commissionRate: p.commissionRate,
-      description: p.description ?? '',
+      description: {
+        uz: p.descriptionUzLatn || p.description || '',
+        kr: p.descriptionUzCyrl || '',
+        ru: p.descriptionRu || '',
+      },
       sortOrder: String(p.sortOrder),
     });
   };
@@ -145,14 +176,14 @@ export default function AdminPrimePage() {
   const revenue = revenueQ.data;
 
   return (
-    <div className="p-6">
-      <PageHeader title="Prime obuna" description="Tariflar va obunalar boshqaruvi" />
+    <div className="space-y-6">
+      <PageHeader title="Prime obuna" description="3 ta tildagi tariflar va obunalar boshqaruvi" />
 
       {revenue && (
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <Card className="flex items-start gap-3 p-4">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/8">
-              <TrendingUp className="size-5 text-green-600" />
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Card className="flex items-start gap-3 p-4 bg-card border-border shadow-xs">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
+              <TrendingUp className="size-5 text-emerald-500" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Umumiy daromad</p>
@@ -160,8 +191,8 @@ export default function AdminPrimePage() {
               <p className="text-xs text-muted-foreground">Oxirgi 30 kun: {fmt(String(revenue.revenue30d))}</p>
             </div>
           </Card>
-          <Card className="flex items-start gap-3 p-4">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/8">
+          <Card className="flex items-start gap-3 p-4 bg-card border-border shadow-xs">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
               <Users className="size-5 text-primary" />
             </div>
             <div>
@@ -169,128 +200,171 @@ export default function AdminPrimePage() {
               <p className="mt-0.5 text-xl font-bold text-foreground">{revenue.activeSubscriptions}</p>
             </div>
           </Card>
-          <Card className="p-4">
-            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Star className="size-3.5" /> Tarif bo&apos;yicha faol
+          <Card className="p-4 bg-card border-border shadow-xs">
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
+              <Star className="size-3.5 text-amber-500" /> Tarif bo&apos;yicha faol
             </p>
             <div className="mt-1.5 space-y-0.5">
               {revenue.byPlan.length === 0 ? (
-                <p className="text-sm text-muted-foreground">—</p>
-              ) : revenue.byPlan.map((p) => (
-                <p key={p.planId} className="flex justify-between text-sm">
-                  <span>{p.planName}</span>
-                  <span className="font-medium text-foreground">{p.activeCount} ta</span>
-                </p>
-              ))}
+                <p className="text-xs text-muted-foreground">—</p>
+              ) : (
+                revenue.byPlan.map((p) => (
+                  <p key={p.planId} className="flex justify-between text-xs">
+                    <span className="text-foreground">{p.planName}</span>
+                    <span className="font-semibold text-foreground">{p.activeCount} ta</span>
+                  </p>
+                ))
+              )}
             </div>
           </Card>
         </div>
       )}
 
       {/* Tabs */}
-      <div className="mt-6 flex gap-2 border-b border-border">
+      <div className="flex gap-2 border-b border-border">
         {(['plans', 'subs'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
-              tab === t ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
-            }`}
-          >
+            className={`border-b-2 px-4 py-2 text-xs font-semibold transition-colors ${
+              tab === t ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}>
             {t === 'plans' ? 'Tariflar' : 'Faol obunalar'}
           </button>
         ))}
       </div>
 
       {tab === 'plans' && (
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Form */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold">
-              {editing ? 'Tarifni tahrirlash' : 'Yangi tarif'}
+            <h3 className="mb-3 text-xs font-bold text-foreground">
+              {editing ? 'Tarifni tahrirlash' : 'Yangi tarif qo\'shish'}
             </h3>
-            <Card className="space-y-3 p-4">
-              {[
-                { key: 'name', label: 'Nomi', placeholder: 'Pro, Business...' },
-                { key: 'monthlyPrice', label: 'Oylik narx (so\'m)', placeholder: '50000' },
-                { key: 'yearlyPrice', label: 'Yillik narx (ixtiyoriy)', placeholder: '500000' },
-                { key: 'commissionRate', label: 'Komissiya (%)', placeholder: '8' },
-                { key: 'description', label: 'Tavsif', placeholder: '' },
-                { key: 'sortOrder', label: 'Tartib', placeholder: '0' },
-              ].map(({ key, label, placeholder }) => (
-                <div key={key}>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">{label}</label>
-                  <input
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                    placeholder={placeholder}
-                    value={form[key as keyof typeof form]}
-                    onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
+            <Card className="space-y-4 p-5 bg-card border-border shadow-xs rounded-xl">
+              <I18nInput
+                label="Tarif Nomi"
+                required
+                placeholder="Pro, Business, Start..."
+                value={form.name}
+                onChange={(val) => setForm((p) => ({ ...p, name: val }))}
+              />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-foreground">Oylik narx (so&apos;m) *</label>
+                  <Input
+                    className="h-8.5 text-xs font-mono"
+                    placeholder="50000"
+                    value={form.monthlyPrice}
+                    onChange={(e) => setForm((p) => ({ ...p, monthlyPrice: e.target.value }))}
                   />
                 </div>
-              ))}
-              {err && <p className="text-xs text-destructive">{err}</p>}
-              <div className="flex gap-2">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-foreground">Yillik narx (ixtiyoriy)</label>
+                  <Input
+                    className="h-8.5 text-xs font-mono"
+                    placeholder="500000"
+                    value={form.yearlyPrice}
+                    onChange={(e) => setForm((p) => ({ ...p, yearlyPrice: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-foreground">Komissiya (%) *</label>
+                  <Input
+                    className="h-8.5 text-xs font-mono"
+                    placeholder="8"
+                    value={form.commissionRate}
+                    onChange={(e) => setForm((p) => ({ ...p, commissionRate: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-foreground">Tartib raqami</label>
+                  <Input
+                    type="number"
+                    className="h-8.5 text-xs"
+                    placeholder="0"
+                    value={form.sortOrder}
+                    onChange={(e) => setForm((p) => ({ ...p, sortOrder: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <I18nInput
+                label="Tarif Tavsifi (ixtiyoriy)"
+                multiline
+                rows={2}
+                placeholder="Tarifning afzalliklari..."
+                value={form.description}
+                onChange={(val) => setForm((p) => ({ ...p, description: val }))}
+              />
+
+              {err && <p className="text-xs text-destructive font-medium">{err}</p>}
+
+              <div className="flex gap-2 pt-2 border-t border-border justify-end">
                 {editing && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => { setEditing(null); setForm(EMPTY_FORM); }}
-                  >
-                    Bekor
+                    onClick={() => {
+                      setEditing(null);
+                      setForm(EMPTY_FORM);
+                    }}>
+                    Bekor qilish
                   </Button>
                 )}
                 <Button
                   size="sm"
-                  disabled={!form.name.trim() || !form.monthlyPrice.trim() || !form.commissionRate.trim() || save.isPending}
-                  onClick={() => save.mutate()}>
-                  <Plus className="size-3" />
-                  {editing ? 'Saqlash' : 'Qo\'shish'}
+                  disabled={!form.name.uz.trim() || !form.monthlyPrice || !form.commissionRate || save.isPending}
+                  onClick={() => save.mutate()}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+                  {save.isPending ? 'Saqlanmoqda…' : editing ? 'Yangilash' : 'Yaratish'}
                 </Button>
               </div>
             </Card>
           </div>
 
-          {/* Plans list */}
+          {/* Plans List */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold">Barcha tariflar</h3>
-            {plansQ.isLoading && <p className="text-sm text-muted-foreground">Yuklanmoqda…</p>}
-            <div className="space-y-2">
-              {(plansQ.data ?? []).map((p) => (
-                <Card key={p.id} className="p-3">
-                  <div className="flex items-start gap-2">
-                    <div className="min-w-0 flex-1">
+            <h3 className="mb-3 text-xs font-bold text-foreground">Mavjud tariflar</h3>
+            <div className="space-y-3">
+              {plansQ.isLoading && <p className="text-xs text-muted-foreground">Yuklanmoqda…</p>}
+              {plansQ.data?.map((p) => (
+                <Card key={p.id} className="p-4 bg-card border-border shadow-xs space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{p.name}</span>
-                        <Badge variant={p.isActive ? 'success' : 'neutral'}>
+                        <span className="font-bold text-sm text-foreground">{p.nameUzLatn || p.name}</span>
+                        {p.nameRu && p.nameRu !== p.nameUzLatn && (
+                          <span className="text-xs text-muted-foreground font-normal">({p.nameRu})</span>
+                        )}
+                        <Badge variant={p.isActive ? 'success' : 'neutral'} className="text-[0.65rem]">
                           {p.isActive ? 'Faol' : 'Nofaol'}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        Oylik: {fmt(p.monthlyPrice)}
-                        {p.yearlyPrice && ` · Yillik: ${fmt(p.yearlyPrice)}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Komissiya: {p.commissionRate}%</p>
+                      {p.description && <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>}
                     </div>
                     <div className="flex gap-1">
-                      <Button size="icon-sm" variant="ghost" onClick={() => startEdit(p)}>
-                        <Edit2 className="size-3" />
+                      <Button variant="ghost" size="icon" className="size-7" onClick={() => startEdit(p)}>
+                        <Edit2 className="size-3.5" />
                       </Button>
                       <Button
-                        size="icon-sm"
                         variant="ghost"
-                        onClick={() => toggle.mutate(p)}
-                      >
-                        {p.isActive ? '⏸' : '▶'}
-                      </Button>
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        className="text-destructive"
-                        onClick={() => { del.reset(); setPendingDelete(p); }}
-                      >
-                        <Trash2 className="size-3" />
+                        size="icon"
+                        className="size-7 text-destructive"
+                        onClick={() => setPendingDelete(p)}>
+                        <Trash2 className="size-3.5" />
                       </Button>
                     </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t border-border/50">
+                    <span>Oylik: <strong className="text-foreground">{fmt(p.monthlyPrice)}</strong></span>
+                    {p.yearlyPrice && <span>Yillik: <strong className="text-foreground">{fmt(p.yearlyPrice)}</strong></span>}
+                    <span>Komissiya: <strong className="text-primary">{p.commissionRate}%</strong></span>
                   </div>
                 </Card>
               ))}
@@ -299,90 +373,77 @@ export default function AdminPrimePage() {
         </div>
       )}
 
+      {/* Subscriptions Tab */}
       {tab === 'subs' && (
-        <div className="mt-6">
-          {subsQ.isLoading && <p className="text-sm text-muted-foreground">Yuklanmoqda…</p>}
-          <div className="space-y-2">
-            {(subsQ.data ?? []).map((s) => (
-              <Card key={s.id} className="flex items-center gap-4 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{s.plan?.name ?? s.planId}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {s.seller ? (s.seller.name || s.seller.phone) : s.sellerId}
+        <Card className="p-4 bg-card border-border shadow-xs">
+          <div className="divide-y divide-border">
+            {subsQ.isLoading && <p className="py-4 text-center text-xs text-muted-foreground">Yuklanmoqda…</p>}
+            {subsQ.data?.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">Obunalar mavjud emas</p>}
+            {subsQ.data?.map((s) => (
+              <div key={s.id} className="py-3 flex items-center justify-between gap-4 text-xs">
+                <div>
+                  <p className="font-semibold text-foreground">{s.seller?.name || s.seller?.phone || 'Seller'}</p>
+                  <p className="text-[0.65rem] text-muted-foreground">
+                    Tarif: {s.plan?.name} · Komissiya: {s.commissionRateSnapshot}% · Muddat: {s.startDate} dan {s.endDate} gacha
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm">{s.startDate} — {s.endDate}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Komissiya: {s.commissionRateSnapshot}% · {fmt(s.priceSnapshot)}
-                  </p>
+                <div className="flex items-center gap-2">
+                  <Badge variant={s.isActive ? 'success' : 'neutral'} className="text-[0.65rem]">
+                    {s.isActive ? 'Faol' : 'Tugagan'}
+                  </Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-[0.7rem] h-7"
+                    onClick={() => setExtendingSub(s)}>
+                    <CalendarPlus className="size-3 mr-1" /> Uzaytirish
+                  </Button>
                 </div>
-                <Badge variant={s.isActive ? 'success' : 'neutral'}>{s.isActive ? 'Faol' : 'Tugagan'}</Badge>
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  title="Muddatni uzaytirish"
-                  onClick={() => { extend.reset(); setExtendDays('7'); setExtendingSub(s); }}>
-                  <CalendarPlus className="size-4" />
-                </Button>
-              </Card>
+              </div>
             ))}
-            {!subsQ.isLoading && (subsQ.data ?? []).length === 0 && (
-              <p className="py-8 text-center text-sm text-muted-foreground">Faol obunalar yo'q</p>
-            )}
           </div>
+        </Card>
+      )}
+
+      {/* Extend Modal */}
+      {extendingSub && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+          <Card className="w-full max-w-sm space-y-4 p-5 bg-card border-border shadow-2xl rounded-xl">
+            <h3 className="text-sm font-bold text-foreground">Obunani uzaytirish</h3>
+            <p className="text-xs text-muted-foreground">
+              {extendingSub.seller?.name || extendingSub.seller?.phone} uchun qo&apos;shimcha kunlar:
+            </p>
+            <Input
+              type="number"
+              value={extendDays}
+              onChange={(e) => setExtendDays(e.target.value)}
+              className="h-8.5 text-xs font-mono"
+            />
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <Button variant="outline" size="sm" onClick={() => setExtendingSub(null)}>
+                Bekor qilish
+              </Button>
+              <Button
+                size="sm"
+                disabled={!extendDaysValid || extend.isPending}
+                onClick={() => extend.mutate()}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+                {extend.isPending ? 'Uzaytirilmoqda…' : 'Uzaytirish'}
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
 
       <ConfirmDialog
         open={!!pendingDelete}
         title="Tarifni o'chirish"
-        description={pendingDelete && (
-          <div className="space-y-1">
-            <p>
-              Tarif: <span className="font-semibold text-foreground">{pendingDelete.name}</span>
-            </p>
-            <p className="mt-2 text-destructive">
-              Bu amalni ortga qaytarib bo&apos;lmaydi. Agar bu tarifga faol obuna bo&apos;lgan sotuvchilar bo&apos;lsa, server bu amalni rad etadi.
-            </p>
-          </div>
-        )}
+        description={`"${pendingDelete?.name}" tarifini o'chirishni xohlaysizmi?`}
         confirmLabel="Ha, o'chirish"
         pending={del.isPending}
-        error={del.isError ? extractErrorMessage(del.error) : ''}
         onConfirm={() => pendingDelete && del.mutate(pendingDelete.id)}
         onCancel={() => setPendingDelete(null)}
       />
-
-      <ConfirmDialog
-        open={!!extendingSub}
-        title="Obuna muddatini uzaytirish"
-        destructive={false}
-        description={extendingSub && (
-          <p>
-            Sotuvchi: <span className="font-medium text-foreground">
-              {extendingSub.seller ? (extendingSub.seller.name || extendingSub.seller.phone) : extendingSub.sellerId}
-            </span>
-            {' '}— joriy tugash sanasi: <span className="font-medium text-foreground">{extendingSub.endDate}</span>
-          </p>
-        )}
-        confirmLabel="Uzaytirish"
-        confirmDisabled={!extendDaysValid}
-        pending={extend.isPending}
-        error={extend.isError ? extractErrorMessage(extend.error) : ''}
-        onConfirm={() => extend.mutate()}
-        onCancel={() => setExtendingSub(null)}>
-        <label className="mb-1 block text-xs font-medium text-muted-foreground">
-          Necha kunga uzaytirish <span className="text-destructive">*</span>
-        </label>
-        <Input
-          type="number"
-          min={1}
-          max={365}
-          value={extendDays}
-          onChange={(e) => setExtendDays(e.target.value)}
-        />
-      </ConfirmDialog>
     </div>
   );
 }
