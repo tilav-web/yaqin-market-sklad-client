@@ -108,13 +108,15 @@ export default function StaffManagementPage() {
       payload,
     }: {
       id: string;
-      payload: { firstName?: string; lastName?: string; phone?: string; email?: string; role?: AdminRole };
+      payload: { username?: string; firstName?: string; lastName?: string; phone?: string; email?: string; role?: AdminRole };
     }) => {
       const res = await api.patch(`/admin/staff/${id}`, payload);
       return res.data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'staff'] });
+      qc.invalidateQueries({ queryKey: ['admin-auth', 'me'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'me'] });
       setEditModalUser(null);
       setSuccess('Xodim ma\'lumotlari yangilandi');
       setTimeout(() => setSuccess(null), 4000);
@@ -546,10 +548,11 @@ function EditStaffModal({
 }: {
   user: StaffUser;
   onClose: () => void;
-  onSubmit: (data: { firstName?: string; lastName?: string; phone?: string; email?: string; role?: AdminRole }) => void;
+  onSubmit: (data: { username?: string; firstName?: string; lastName?: string; phone?: string; email?: string; role?: AdminRole }) => void;
   isLoading: boolean;
   error: string | null;
 }) {
+  const [username, setUsername] = useState(user.username);
   const [firstName, setFirstName] = useState(user.firstName);
   const [lastName, setLastName] = useState(user.lastName);
   const [phone, setPhone] = useState(user.phone || '');
@@ -559,6 +562,7 @@ function EditStaffModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
+      username: username.trim().toLowerCase().replace(/\s+/g, ''),
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       phone: phone.trim() || undefined,
@@ -571,11 +575,28 @@ function EditStaffModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
       <Card className="w-full max-w-lg p-6 bg-card border-border shadow-2xl rounded-xl">
         <h2 className="text-base font-bold text-foreground mb-1">Xodimni Tahrirlash</h2>
-        <p className="text-xs text-muted-foreground font-mono mb-4">@{user.username}</p>
+        <p className="text-xs text-muted-foreground mb-4">
+          Xodimning username, ism, familiya va kirish huquqlarini o&apos;zgartirish
+        </p>
 
         {error && <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/30 p-2.5 text-xs text-red-400">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+          <div className="space-y-1">
+            <label className="font-semibold text-foreground">Username (Login) *</label>
+            <Input
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
+              placeholder="username"
+              required
+              minLength={3}
+              className="h-8.5 text-xs font-mono"
+            />
+            <p className="text-[0.65rem] text-muted-foreground">
+              Super Admin sifatida xodimning login (username) nomini istalgan vaqtda o&apos;zgartirishingiz mumkin.
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="font-semibold text-foreground">Ism</label>
