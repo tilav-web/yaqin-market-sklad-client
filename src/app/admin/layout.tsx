@@ -41,6 +41,7 @@ import { useEffect, useState } from 'react';
 import { CommandPalette } from '@/components/admin/command-palette';
 import { NotificationPopover } from '@/components/admin/notification-popover';
 import { QuickActionsMenu } from '@/components/admin/quick-actions-menu';
+import { SystemHealthModal } from '@/components/admin/system-health-modal';
 import { Toaster } from '@/components/admin/toaster';
 import { Button } from '@/components/ui/button';
 import { api, tokenStore } from '@/lib/api';
@@ -120,7 +121,7 @@ const NAV_HUBS: NavHub[] = [
     icon: Wallet,
     items: [
       { href: '/admin/balance', label: 'Balans & Hamyonlar', icon: Wallet, allowedRoles: ['super_admin', 'admin', 'finance'] },
-      { href: '/admin/withdrawals', label: 'Pul yechish (Payouts)', icon: CreditCard, allowedRoles: ['super_admin', 'admin', 'finance'] },
+      { href: '/admin/withdrawals', label: 'Pul yechish (Payouts)', icon: CreditCard, badgeKey: 'withdrawalsPending', allowedRoles: ['super_admin', 'admin', 'finance'] },
       { href: '/admin/debts', label: 'Komissiya qarzlari', icon: AlertTriangle, allowedRoles: ['super_admin', 'admin', 'finance'] },
       { href: '/admin/payables', label: 'Do\'kon majburiyatlari', icon: HandCoins, allowedRoles: ['super_admin', 'admin', 'finance'] },
       { href: '/admin/prime', label: 'Prime VIP obuna', icon: Star, allowedRoles: ['super_admin', 'admin', 'finance'] },
@@ -148,7 +149,7 @@ const NAV_HUBS: NavHub[] = [
       { href: '/admin/notifications', label: 'Bildirishnomalar', icon: Bell, allowedRoles: ['super_admin', 'admin'] },
       { href: '/admin/releases', label: 'Ilova versiyalari', icon: Smartphone, allowedRoles: ['super_admin', 'admin'] },
       { href: '/admin/audit-log', label: 'Amallar tarixi', icon: History, allowedRoles: ['super_admin', 'admin'] },
-      { href: '/admin/settings', label: 'Tizim sozlamalari', icon: Settings, allowedRoles: ['super_admin'] },
+      { href: '/admin/settings', label: 'Tizim sozlamalari', icon: Settings, badgeKey: 'settingsWarning', allowedRoles: ['super_admin'] },
     ],
   },
 ];
@@ -208,7 +209,11 @@ function NavHubsRenderer({
                       isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-primary',
                     )} />
                     <span className="flex-1 truncate">{item.label}</span>
-                    {badge > 0 ? (
+                    {item.badgeKey === 'settingsWarning' && badge > 0 ? (
+                      <span className="flex size-4.5 items-center justify-center rounded-full bg-amber-500 text-white text-[0.65rem] font-bold shadow-xs animate-pulse">
+                        !
+                      </span>
+                    ) : badge > 0 ? (
                       <span className={cn(
                         'flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1.5 text-[0.62rem] font-bold',
                         isActive ? 'bg-primary-foreground text-primary' : 'bg-primary text-primary-foreground',
@@ -232,6 +237,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [systemHealthOpen, setSystemHealthOpen] = useState(false);
 
   useEffect(() => {
     // Keyboard shortcut for Ctrl+K or Cmd+K
@@ -295,11 +301,43 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     refetchInterval: 60_000,
   });
 
+  const withdrawalsPendingQuery = useQuery({
+    queryKey: ['admin', 'withdrawals-pending-count'],
+    queryFn: async () => {
+      try {
+        const res = await api.get<{ total: number }>('/admin/balance/withdrawals', { params: { status: 'pending', limit: 1 } });
+        return res.data.total;
+      } catch {
+        return 0;
+      }
+    },
+    enabled: Boolean(tokenStore.access && admin),
+    refetchInterval: 60_000,
+  });
+
+  const settingsWarningQuery = useQuery({
+    queryKey: ['admin', 'settings-warning-count'],
+    queryFn: async () => {
+      try {
+        const res = await api.get<Array<{ key: string; value: string }>>('/admin/settings');
+        const didox = res.data.find((s) => s.key === 'didox_user_key')?.value;
+        const stir = res.data.find((s) => s.key === 'platform_stir')?.value;
+        return !didox || !stir ? 1 : 0;
+      } catch {
+        return 0;
+      }
+    },
+    enabled: Boolean(tokenStore.access && admin?.role === 'super_admin'),
+    refetchInterval: 60_000,
+  });
+
   const badgeCounts: Record<string, number> = {
     contactUnread: contactUnreadQuery.data ?? 0,
     complaintsOpen: complaintsOpenQuery.data ?? 0,
     riskOpen: riskOpenQuery.data ?? 0,
     applicationsPending: applicationsPendingQuery.data ?? 0,
+    withdrawalsPending: withdrawalsPendingQuery.data ?? 0,
+    settingsWarning: settingsWarningQuery.data ?? 0,
   };
 
   useEffect(() => {
@@ -339,6 +377,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
       <Toaster />
       <CommandPalette isOpen={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
+      <SystemHealthModal open={systemHealthOpen} onClose={() => setSystemHealthOpen(false)} />
 
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 flex-col border-r border-border bg-sidebar shrink-0 shadow-sm select-none">
@@ -473,11 +512,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="flex items-center gap-2.5">
-            {/* Live System Status Indicator */}
-            <div className="hidden lg:flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[0.7rem] font-bold text-emerald-600 dark:text-emerald-400">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              Tizim faol
-            </div>
+            {/* Live System Status Indicator (Clickable Health Inspector) */}
+            <button
+              type="button"
+              onClick={() => setSystemHealthOpen(true)}
+              className={cn(
+                'hidden lg:flex items-center gap-1.5 rounded-full border px-3 py-1 text-[0.7rem] font-bold transition-all hover:scale-105 shadow-xs cursor-pointer',
+                badgeCounts.settingsWarning > 0
+                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                  : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+              )}>
+              <span
+                className={cn(
+                  'size-2 rounded-full animate-pulse',
+                  badgeCounts.settingsWarning > 0 ? 'bg-amber-500' : 'bg-emerald-500',
+                )}
+              />
+              {badgeCounts.settingsWarning > 0 ? 'Sozlash zarur' : 'Tizim faol'}
+            </button>
 
             {/* Quick Actions Menu (+ Yangi) */}
             <QuickActionsMenu />

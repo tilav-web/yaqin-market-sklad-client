@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+import { ExecutiveActionHub } from '@/components/admin/executive-action-hub';
 import { PageHeader } from '@/components/admin/page-header';
 import { Card } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
@@ -223,29 +224,8 @@ export default function AdminDashboardPage() {
         }
       />
 
-      {/* Urgent Pending Application Alert */}
-      {d.pendingApplications > 0 && (
-        <Link href="/admin/applications" className="block">
-          <div className="flex items-center justify-between rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 transition-all hover:bg-amber-500/15">
-            <div className="flex items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500 text-white font-bold text-sm shadow-sm">
-                !
-              </div>
-              <div>
-                <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
-                  {d.pendingApplications} ta yangi do&apos;kon ochish arizasi ko&apos;rib chiqilishini kutmoqda
-                </p>
-                <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
-                  Sotuvchilar STIR va shartnoma ma&apos;lumotlarini tasdiqlash uchun arizalar bo&apos;limiga o&apos;ting
-                </p>
-              </div>
-            </div>
-            <span className="hidden sm:inline-flex items-center gap-1 text-xs font-bold text-amber-700 dark:text-amber-300">
-              Ko&apos;rib chiqish →
-            </span>
-          </div>
-        </Link>
-      )}
+      {/* Executive Action & Attention Hub */}
+      <ExecutiveActionHub />
 
       {/* Main KPI Stat Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
