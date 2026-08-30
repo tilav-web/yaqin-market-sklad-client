@@ -382,7 +382,7 @@ export default function ShopsAdminPage() {
                 page={page}
                 pageSize={PAGE_SIZE}
                 total={total}
-                onChange={setPage}
+                onPage={setPage}
               />
             </div>
           )}

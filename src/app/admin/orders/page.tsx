@@ -571,7 +571,7 @@ export default function AdminOrdersPage() {
               page={page}
               pageSize={PAGE_SIZE}
               total={total}
-              onChange={setPage}
+              onPage={setPage}
             />
           </div>
         )}
