@@ -3,15 +3,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
+  Boxes,
   Building2,
+  Calendar,
   Check,
   CheckCircle2,
+  Clock,
   DollarSign,
   Eye,
   EyeOff,
+  FileCode,
+  Gauge,
   HelpCircle,
+  Hourglass,
   KeyRound,
+  MapPin,
   Percent,
+  QrCode,
   Receipt,
   RefreshCw,
   Save,
@@ -19,9 +27,14 @@ import {
   Server,
   ShieldAlert,
   ShieldCheck,
+  Smartphone,
   Sparkles,
+  Star,
+  Store,
+  Timer,
   TrendingUp,
   TriangleAlert,
+  Truck,
   Zap,
 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
@@ -63,7 +76,7 @@ interface Economics {
   warnings: string[];
 }
 
-type SettingsTab = 'finance' | 'legal' | 'fiscal' | 'risk';
+type SettingsTab = 'finance' | 'legal' | 'fiscal' | 'risk' | 'inventory';
 
 interface SettingMeta {
   tab: SettingsTab;
@@ -71,44 +84,45 @@ interface SettingMeta {
   category: string;
   unit?: string;
   icon: React.ElementType;
-  hint?: string;
+  hint: string;
   min?: number;
   max?: number;
   isSecret?: boolean;
   options?: { value: string; label: string; desc?: string }[];
 }
 
+/** 100% Complete metadata dictionary for EVERY setting key in backend */
 const SETTINGS_METADATA: Record<string, SettingMeta> = {
-  // 1. Finance & Commission
+  // ── 1. Finance & Economics ──
   commission_rate_default: {
     tab: 'finance',
-    category: 'Asosiy Komissiya',
+    category: 'Komissiya Siyosati',
     label: 'Standart platforma komissiyasi',
     unit: '%',
     min: 0,
     max: 100,
     icon: Percent,
-    hint: "Yangi buyurtmalarga qo'llanadigan standart komissiya foizi. (Masalan: 12%)",
+    hint: "Yangi buyurtmalarga qo'llanadigan standart vositachilik komissiyasi foizi (Standart: 12%).",
   },
   click_fee_percent: {
     tab: 'finance',
     category: 'Ekvayring & To\'lovlar',
-    label: 'Click / To\'lov tizimlari ekvayring haqi',
+    label: 'Click ekvayring to\'lov haqi',
     unit: '%',
     min: 0,
     max: 10,
     icon: DollarSign,
-    hint: "Onlayn to'lovlar uchun to'lov shlyuzi ushlab qoladigan foiz. (Masalan: 1.5%)",
+    hint: "Onlayn karta orqali to'lovlarda Click/Payme shlyuzlari ushlab qoladigan xarajat foizi.",
   },
   payout_fee_percent: {
     tab: 'finance',
     category: 'Ekvayring & To\'lovlar',
-    label: "Seller kartasiga pul o'tkazish (Payout) haqi",
+    label: 'Seller kartasiga pul yechish (Payout) haqi',
     unit: '%',
     min: 0,
     max: 10,
     icon: DollarSign,
-    hint: "Do'konga pul yechilganda bank ushlab qoladigan komissiya. (Masalan: 1.0%)",
+    hint: "Sotuvchi o'z daromadini bank kartasiga yechib olayotganda bank ushlab qoladigan foiz.",
   },
   min_order_total: {
     tab: 'finance',
@@ -117,17 +131,17 @@ const SETTINGS_METADATA: Record<string, SettingMeta> = {
     unit: "so'm",
     min: 0,
     icon: DollarSign,
-    hint: "Mijoz xarid qilishi mumkin bo'lgan eng kam savat summasi.",
+    hint: "Xaridor do'kondan buyurtma berishi mumkin bo'lgan eng kam savat summasi (0 = cheklovsiz).",
   },
   debt_due_days: {
     tab: 'finance',
-    category: 'Qarzdorlik Siyosati',
+    category: 'Qarzdorlik Nazorati',
     label: 'Naqd komissiya qarzini to\'lash muddati',
     unit: 'kun',
     min: 1,
     max: 90,
-    icon: AlertTriangle,
-    hint: "Naqd savdo komissiyasini to'lash uchun sellerga beriladigan muhlat.",
+    icon: Clock,
+    hint: "Naqd savdo komissiyasini platformaga to'lash uchun sellerga beriladigan maksimal muhlat.",
   },
   settlement_hours: {
     tab: 'finance',
@@ -136,53 +150,53 @@ const SETTINGS_METADATA: Record<string, SettingMeta> = {
     unit: 'soat',
     min: 0,
     max: 168,
-    icon: Zap,
-    hint: "Buyurtma yetkazilgach, mablag' seller hisobiga to'liq o'tishi uchun kutish vaqti.",
+    icon: Hourglass,
+    hint: "Buyurtma yetkazilgach, mijoz e'tiroz bildirmasa, mablag' sellerning yechish balansiga o'tish vaqti.",
   },
 
-  // 2. Legal & Soliq (Didox)
+  // ── 2. Legal & Soliq (Didox) ──
   platform_legal_name: {
     tab: 'legal',
-    category: 'Operator Yuridik Rekvizitlari',
+    category: 'Operator Yuridik Shaxsi',
     label: 'Operator (Platforma egasi) rasmiy nomi',
     icon: Building2,
-    hint: 'Shartnomalar, oferta va cheklarda ko\'rsatiladigan rasmiy korxona nomi. (Masalan: "TILAV" MCHJ)',
+    hint: 'Barcha shartnoma, oferta va elektron hisob-fakturalarda ko\'rsatiladigan rasmiy korxona nomi ("TILAV" MCHJ).',
   },
   platform_stir: {
     tab: 'legal',
-    category: 'Operator Yuridik Rekvizitlari',
+    category: 'Operator Yuridik Shaxsi',
     label: 'Operator STIR (INN) raqami',
     icon: Building2,
-    hint: "Platforma yuridik shaxsining 9 xonali rasmiy STIR raqami. (Masalan: 313296455)",
+    hint: "Operator korxonasining 9 xonali davlat soliq identifikatsiya raqami (313296455).",
   },
   didox_user_key: {
     tab: 'legal',
-    category: 'Didox & Davlat Soliq Integratsiyasi',
+    category: 'Davlat Soliq & Didox Integratsiyasi',
     label: 'Didox API kaliti (user-key)',
     isSecret: true,
     icon: KeyRound,
-    hint: "Didox shaxsiy kabinetidan olingan API kaliti. Yangi sellerlar STIR ma'lumotlarini Soliq bazasidan avtomatik tortish uchun xizmat qiladi.",
+    hint: "Didox shaxsiy kabinetidan olingan API kaliti. Yangi sellerlar STIR ma'lumotlarini Soliq bazasidan avtomatik tekshirish uchun xizmat qiladi.",
   },
   didox_api_url: {
     tab: 'legal',
-    category: 'Didox & Davlat Soliq Integratsiyasi',
-    label: 'Didox API asosiy server manzili',
+    category: 'Davlat Soliq & Didox Integratsiyasi',
+    label: 'Didox API server manzili',
     icon: Server,
     hint: "Standart qiymat: https://api.didox.uz",
   },
 
-  // 3. Fiscal & Cheklar
+  // ── 3. Fiscal & Cheklar ──
   fiscal_mode: {
     tab: 'fiscal',
-    category: 'Fiskallash Siyosati',
+    category: 'Fiskallash Tartibi',
     label: 'Fiskal cheklar generatsiya rejimi',
     icon: Receipt,
-    hint: 'OFD va Davlat Soliq Qo\'mitasiga chek yuborish tartibi.',
+    hint: 'Davlat Soliq Qo\'mitasi (OFD)ga elektron fiskal chek yuborish tartibi.',
     options: [
       {
         value: 'off',
         label: 'Off — Chek yaratilmaydi',
-        desc: 'Fiskallash to\'liq o\'chirilgan (Test rejimi)',
+        desc: 'Fiskallash to\'liq o\'chirilgan (Test va ishlab chiqish rejimi)',
       },
       {
         value: 'collect',
@@ -192,7 +206,7 @@ const SETTINGS_METADATA: Record<string, SettingMeta> = {
       {
         value: 'live',
         label: 'Live — OFDga jonli yuboriladi',
-        desc: 'Har bir buyurtma uchun avtomatik QR-kodli rasmiy chek beriladi',
+        desc: 'Har bir buyurtma uchun avtomatik QR-kodli rasmiy fiskal chek beriladi',
       },
     ],
   },
@@ -206,88 +220,177 @@ const SETTINGS_METADATA: Record<string, SettingMeta> = {
     icon: Percent,
     hint: "O'zbekiston Respublikasi bo'yicha amaldagi QQS foizi (12%).",
   },
+  delivery_mxik_code: {
+    tab: 'fiscal',
+    category: 'Tasnif & MXIK',
+    label: 'Yetkazib berish xizmati MXIK kodi',
+    icon: FileCode,
+    hint: 'Kuryerlik va yetkazib berish xizmati uchun Tasnif Soliq MXIK kodi (masalan: 05320001001000000).',
+  },
 
-  // 4. Risk & Anti-Fraud
+  // ── 4. Risk & Anti-Fraud ──
+  risk_low_rating_threshold: {
+    tab: 'risk',
+    category: 'Kuryer & Xizmat Sifati',
+    label: 'Kuryer past baho xavf chegarasi',
+    unit: 'yulduz',
+    min: 1,
+    max: 5,
+    icon: Star,
+    hint: 'Agar mijoz kuryerga ushbu yoki undan past baho (masalan 1 yoki 2 yulduz) qo\'ysa, tizim kuryerni avtomatik tekshiruv (Risk Flag) ro\'yxatiga kiritadi.',
+  },
   risk_delivered_max_distance_m: {
     tab: 'risk',
     category: 'Lokatsiya & GPS Nazorati',
-    label: '"Yetkazildi" belgilashda mijoz manzilidan max masofa',
+    label: '"Yetkazildi" bosishda mijoz manzilidan max masofa',
     unit: 'metr',
     min: 10,
     max: 5000,
-    icon: ShieldAlert,
-    hint: 'Kuryer mijoz manzilidan necha metr uzoqlikda buyurtmani yakunlashi mumkin.',
+    icon: MapPin,
+    hint: 'Kuryer buyurtmani yakunlash (Yetkazildi) tugmasini bosganda, mijoz tanlagan manzildan eng ko\'pi bilan necha metr uzoqda bo\'lishi mumkin.',
   },
   risk_evidence_max_accuracy_m: {
     tab: 'risk',
     category: 'Lokatsiya & GPS Nazorati',
-    label: 'GPS aniqlik (Accuracy) chegarasi',
+    label: 'GPS aniqligi (Accuracy) ruxsat chegarasi',
     unit: 'metr',
     min: 5,
     max: 200,
-    icon: ShieldAlert,
-    hint: 'Kuryer telefonidan yuborilgan GPS signali ruxsat etilgan maksimal noaniqligi.',
+    icon: Gauge,
+    hint: 'Kuryer smartfonidagi GPS aniqligi ushbu masofadan noaniq bo\'lsa (masalan 50m dan yomon), joylashuv noaniq deb qabul qilinadi.',
   },
   risk_pickup_max_distance_m: {
     tab: 'risk',
     category: 'Lokatsiya & GPS Nazorati',
-    label: '"Do\'kondan oldi" belgilashda max masofa',
+    label: '"Do\'kondan oldi" bosishda do\'kondan max masofa',
     unit: 'metr',
     min: 10,
     max: 5000,
-    icon: ShieldAlert,
-    hint: 'Kuryer tovarlarni olish uchun do\'kondan necha metr masofada bo\'lishi kerak.',
+    icon: Store,
+    hint: 'Kuryer tovarlarni do\'kondan qabul qilib olganda do\'kon binosidan maksimal qancha masofada bo\'lishi mumkin.',
+  },
+  risk_address_pin_max_distance_m: {
+    tab: 'risk',
+    category: 'Mijoz Manzili Nazorati',
+    label: 'Mijoz manzil pini va GPS masofa chegarasi',
+    unit: 'metr',
+    min: 0,
+    max: 10000,
+    icon: MapPin,
+    hint: 'Mijoz xaritada belgilagan yetkazish nuqtasi bilan uning real GPS lokatsiyasi orasidagi farq (0 = o\'chirilgan).',
+  },
+  risk_shop_relocation_max_m: {
+    tab: 'risk',
+    category: 'Do\'kon Xavfsizligi',
+    label: 'Faol do\'kon koordinatasi siljish chegarasi',
+    unit: 'metr',
+    min: 50,
+    max: 5000,
+    icon: Store,
+    hint: 'Faol yoki buyurtmalari bor do\'kon o\'z manzilini bu masofadan ko\'proq siljitsa, shubhali faoliyat sifatida adminlarga xabar beriladi.',
   },
   risk_impossible_speed_kmh: {
     tab: 'risk',
-    category: 'Harakat & Tezlik Anomaliyalari',
+    category: 'Harakat & Soxta GPS',
     label: 'Imkonsiz tezlik (Teleportatsiya) chegarasi',
     unit: 'km/soat',
     min: 30,
     max: 300,
-    icon: ShieldAlert,
-    hint: 'Agar kuryer ikki nuqta orasida bu tezlikdan yuqori harakatlansa, soxta GPS xavf signali beriladi.',
+    icon: Zap,
+    hint: 'Agar kuryer ikki nuqta orasida bu tezlikdan yuqori masofa bosib o\'tsa, soxta GPS (Fake Location) xavf signali yoqiladi.',
   },
   risk_impossible_min_segment_m: {
     tab: 'risk',
-    category: 'Harakat & Tezlik Anomaliyalari',
-    label: 'Tezlik tekshiruvi uchun minimal masofa',
+    category: 'Harakat & Soxta GPS',
+    label: 'Tezlik tekshiruvi uchun minimal oraliq',
     unit: 'metr',
     min: 10,
     max: 1000,
-    icon: ShieldAlert,
-    hint: 'Tezlik tekshiruvi hisoblanishi uchun kamida bosib o\'tilishi kerak bo\'lgan oraliq.',
+    icon: MapPin,
+    hint: 'Tezlik tekshiruvi hisoblanishi uchun kuryer kamida shuncha metr masofani bosib o\'tgan bo\'lishi kerak.',
   },
   risk_device_max_accounts: {
     tab: 'risk',
-    category: 'Akkaunt & Qurilma Xavfsizligi',
+    category: 'Akkauntlar & Anti-Abuse',
     label: 'Bitta qurilmadagi maksimal akkaunt soni',
     unit: 'ta',
     min: 1,
     max: 20,
-    icon: ShieldCheck,
-    hint: 'Bitta smartfondan ko\'p sonli akkaunt ochish orqali suiiste\'mol qilishni oldini olish.',
+    icon: Smartphone,
+    hint: 'Bitta telefondan haftasiga ko\'p sonli akkaunt ochish yoki promo-kodlarni suiiste\'mol qilishni cheklovchi limit.',
+  },
+  risk_ping_min_interval_sec: {
+    tab: 'risk',
+    category: 'GPS Marshrut',
+    label: 'Kuryer GPS treki ping oralig\'i',
+    unit: 'soniya',
+    min: 1,
+    max: 60,
+    icon: Timer,
+    hint: 'Yetkazib berish jarayonida kuryer smartfonidan serverga GPS koordinatalari necha soniyada bir marta yangilanib yuboriladi.',
   },
   risk_ping_retention_days: {
     tab: 'risk',
     category: 'Audit & Saqlash',
-    label: 'Kuryer marshruti (Trek) saqlash muddati',
+    label: 'Kuryer GPS treki saqlash muddati',
     unit: 'kun',
     min: 1,
     max: 365,
-    icon: ShieldCheck,
+    icon: Clock,
     hint: 'GPS marshrut koordinatalari bazada necha kun saqlanadi.',
   },
   risk_qr_handshake_enabled: {
     tab: 'risk',
     category: 'Tasdiqlash Mexanizmlari',
     label: 'QR-kod orqali topshirish tasdig\'i',
-    icon: ShieldCheck,
-    hint: '1 = Kuryer xaridorga tovar berganda QR skaner qilish talab qilinadi, 0 = Oddiy tasdiq.',
+    icon: QrCode,
+    hint: '1 = Kuryer xaridorga tovar berganda QR skaner qilish talab qilinadi, 0 = Standart PIN tasdiq.',
     options: [
       { value: '1', label: '1 — QR-kod tasdig\'i majburiy' },
       { value: '0', label: '0 — Standart PIN / tugmacha tasdig\'i' },
     ],
+  },
+
+  // ── 5. Inventory & Mahsulotlar ──
+  expiry_warning_days: {
+    tab: 'inventory',
+    category: 'Yaroqlilik Muddati',
+    label: 'Yaroqlilik muddati ogohlantirish vaqti',
+    unit: 'kun',
+    min: 1,
+    max: 90,
+    icon: Clock,
+    hint: 'Mahsulotning yaroqlilik muddati tugashiga shuncha kun qolganda do\'konga va adminga ogohlantirish xabari boradi.',
+  },
+  expiry_critical_days: {
+    tab: 'inventory',
+    category: 'Yaroqlilik Muddati',
+    label: 'Yaroqlilik muddati kritik chegarasi',
+    unit: 'kun',
+    min: 1,
+    max: 30,
+    icon: AlertTriangle,
+    hint: 'Muddati tugashiga shuncha kun qolgan mahsulotlar avtomatik tarzda vitrinadan yashiriladi va sotuvi to\'xtatiladi.',
+  },
+  low_stock_warning_default: {
+    tab: 'inventory',
+    category: 'Ombor Qoldiqlari',
+    label: 'Kam qolgan tovar ogohlantirish soni',
+    unit: 'dona',
+    min: 1,
+    max: 100,
+    icon: Boxes,
+    hint: 'Mahsulot qoldig\'i ushbu miqdordan kamaysa, sotuvchiga tovar tugayotgani haqida bildirishnoma boradi.',
+  },
+  low_stock_critical_default: {
+    tab: 'inventory',
+    category: 'Ombor Qoldiqlari',
+    label: 'Tugash arafasidagi kritik qoldiq soni',
+    unit: 'dona',
+    min: 0,
+    max: 50,
+    icon: Boxes,
+    hint: 'Mahsulot qoldig\'i ushbu songa tushganda omborda tovar tugayotganlik xavfi belgilanadi.',
   },
 };
 
@@ -355,7 +458,6 @@ function EconomicsCalculator({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        {/* Online payment model */}
         <div className="rounded-xl border border-border/80 bg-card p-3.5 shadow-xs">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-bold text-foreground">
@@ -381,7 +483,6 @@ function EconomicsCalculator({
           </div>
         </div>
 
-        {/* Cash payment model */}
         <div className="rounded-xl border border-border/80 bg-card p-3.5 shadow-xs">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-bold text-foreground">Naqd Buyurtma</span>
@@ -566,14 +667,13 @@ export default function SettingsPage() {
 
   const settingsList = data ?? [];
 
-  // Group settings by tab
   const tabItems = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return settingsList.filter((s) => {
       const meta = SETTINGS_METADATA[s.key];
       if (q) {
         const matchLabel = (meta?.label || s.key).toLowerCase().includes(q);
-        const matchDesc = (s.description || '').toLowerCase().includes(q);
+        const matchDesc = (s.description || meta?.hint || '').toLowerCase().includes(q);
         const matchKey = s.key.toLowerCase().includes(q);
         return matchLabel || matchDesc || matchKey;
       }
@@ -631,6 +731,12 @@ export default function SettingsPage() {
       label: 'Anti-Fraud & Xavfsizlik',
       icon: ShieldAlert,
       count: settingsList.filter((s) => SETTINGS_METADATA[s.key]?.tab === 'risk').length,
+    },
+    {
+      id: 'inventory',
+      label: 'Ombor & Mahsulotlar',
+      icon: Boxes,
+      count: settingsList.filter((s) => SETTINGS_METADATA[s.key]?.tab === 'inventory').length,
     },
   ];
 
@@ -712,6 +818,10 @@ export default function SettingsPage() {
           const isRevealed = Boolean(showSecret[s.key]);
           const Icon = meta?.icon || HelpCircle;
 
+          const label = meta?.label || s.key;
+          const category = meta?.category || 'Tizim Parametri';
+          const hint = meta?.hint || s.description || 'Platforma konfiguratsiyasi.';
+
           return (
             <Card
               key={s.key}
@@ -728,13 +838,11 @@ export default function SettingsPage() {
                       <Icon className="size-4.5" />
                     </div>
                     <div>
-                      {meta?.category && (
-                        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
-                          {meta.category}
-                        </p>
-                      )}
+                      <p className="text-[0.65rem] font-bold uppercase tracking-wider text-muted-foreground">
+                        {category}
+                      </p>
                       <h4 className="text-sm font-bold text-foreground">
-                        {meta?.label || s.key}
+                        {label}
                       </h4>
                     </div>
                   </div>
@@ -746,7 +854,7 @@ export default function SettingsPage() {
                 </div>
 
                 <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                  {meta?.hint || s.description || "Tizim parametri."}
+                  {hint}
                 </p>
               </div>
 
