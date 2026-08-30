@@ -92,7 +92,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Onboarding',
     items: [
-      { href: '/admin/applications', label: 'Seller arizalari', icon: FileText, allowedRoles: ['super_admin', 'admin', 'moderator'] },
+      { href: '/admin/applications', label: "Do'kon arizalari", icon: FileText, allowedRoles: ['super_admin', 'admin', 'moderator'] },
     ],
   },
   {

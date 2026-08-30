@@ -159,8 +159,8 @@ export default function ApplicationsPage() {
     <div className="space-y-6 p-6">
       <PageHeader
         eyebrow="Onboarding"
-        title="Seller arizalari"
-        description="Foydalanuvchilar sotuvchi bo'lish uchun yuborgan arizalarni ko'rib chiqing va tasdiqlang."
+        title="Do'kon ochish arizalari"
+        description="Foydalanuvchilar do'kon ochish uchun yuborgan arizalarni ko'rib chiqing va tasdiqlang."
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
