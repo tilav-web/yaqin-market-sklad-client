@@ -6,7 +6,6 @@ import {
   BarChart3,
   Bell,
   BookOpen,
-  ChevronDown,
   ClipboardList,
   CreditCard,
   FileText,
@@ -23,7 +22,6 @@ import {
   Settings,
   ShieldAlert,
   Smartphone,
-  Sparkles,
   Star,
   Store,
   TrendingUp,
@@ -352,7 +350,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [meQuery.isError, router]);
 
   useEffect(() => {
-    setMounted(true);
+    const t = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(t);
   }, []);
 
   if (!mounted || !tokenStore.access) return null;

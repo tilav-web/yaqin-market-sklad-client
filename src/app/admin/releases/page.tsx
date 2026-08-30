@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { I18nInput, I18nValue } from '@/components/ui/i18n-input';
 import { api, extractErrorMessage } from '@/lib/api';
+import { getLocalizedText } from '@/lib/transliteration';
 import { toast } from '@/stores/toast';
 
 interface Release {
@@ -159,7 +160,7 @@ export default function ReleasesPage() {
           </thead>
           <tbody className="divide-y divide-border">
             {releases.map((r) => {
-              const notesStr = typeof r.notes === 'object' ? (r.notes as any)?.uz || '' : (r.notes || '—');
+              const notesStr = getLocalizedText(r.notes, 'uz') || '—';
               return (
                 <tr key={r.id} className="transition-colors hover:bg-muted/30">
                   <td className="px-4 py-3">

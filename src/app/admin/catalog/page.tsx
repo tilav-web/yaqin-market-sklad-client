@@ -9,7 +9,6 @@ import {
   Eye,
   FolderPlus,
   Globe,
-  Package,
   Pencil,
   Plus,
   Search,

@@ -5,18 +5,11 @@ import {
   AlertTriangle,
   ArrowDownLeft,
   ArrowUpRight,
-  Building2,
-  Calendar,
-  CheckCircle2,
   Clock,
   CreditCard,
   DollarSign,
-  HelpCircle,
-  Phone,
-  RefreshCw,
   Search,
   Store,
-  User,
   Wallet,
   X,
 } from 'lucide-react';
@@ -78,7 +71,6 @@ export default function AdminBalancePage() {
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState('');
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
-  const [actionErr, setActionErr] = useState('');
 
   const sellerSearchQ = useQuery<UsersSearchPage>({
     queryKey: ['admin', 'users', 'seller-search', submittedQuery],
@@ -123,10 +115,9 @@ export default function AdminBalancePage() {
       qc.invalidateQueries({ queryKey: ['admin', 'balance', sellerId] });
       qc.invalidateQueries({ queryKey: ['admin', 'txs', sellerId] });
       setPendingAction(null);
-      setActionErr('');
       toast.success('Tranzaksiya muvaffaqiyatli hisoblandi');
     },
-    onError: (e) => setActionErr(extractErrorMessage(e)),
+    onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
   const forceRefund = useMutation({
@@ -135,10 +126,9 @@ export default function AdminBalancePage() {
       qc.invalidateQueries({ queryKey: ['admin', 'balance', sellerId] });
       qc.invalidateQueries({ queryKey: ['admin', 'txs', sellerId] });
       setPendingAction(null);
-      setActionErr('');
       toast.success('Tranzaksiya qaytarildi (Refund)');
     },
-    onError: (e) => setActionErr(extractErrorMessage(e)),
+    onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
   return (

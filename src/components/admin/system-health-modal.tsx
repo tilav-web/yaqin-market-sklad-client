@@ -8,21 +8,14 @@ import {
   Check,
   CheckCircle2,
   Database,
-  ExternalLink,
   KeyRound,
   RefreshCw,
-  Server,
-  ShieldAlert,
-  ShieldCheck,
-  Smartphone,
   X,
-  Zap,
 } from 'lucide-react';
 import Link from 'next/link';
-import React, { useState } from 'react';
+import React from 'react';
 
-import { Button } from '@/components/ui/button';
-import { api, extractErrorMessage } from '@/lib/api';
+import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { useEscapeKey } from '@/lib/use-escape-key';
 

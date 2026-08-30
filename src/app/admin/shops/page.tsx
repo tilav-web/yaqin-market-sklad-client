@@ -2,14 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Building2,
   ChevronDown,
   ChevronUp,
   Download,
   List,
   MapPin,
   MessageSquareWarning,
-  Phone,
   Power,
   PowerOff,
   Search,

@@ -8,11 +8,7 @@ import {
   Copy,
   CreditCard,
   Download,
-  Phone,
   RefreshCw,
-  Search,
-  Store,
-  User,
   X,
   XCircle,
 } from 'lucide-react';

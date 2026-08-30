@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarPlus, Edit2, Plus, Star, TrendingUp, Trash2, Users } from 'lucide-react';
+import { CalendarPlus, Edit2, Star, TrendingUp, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
 
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
@@ -343,13 +343,17 @@ export default function AdminPrimePage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-foreground">{p.nameUzLatn || getLocalizedText(p.name, 'uz')}</span>
-                        {p.nameRu && p.nameRu !== p.nameUzLatn && (
-                          <span className="text-xs text-muted-foreground font-normal">({p.nameRu})</span>
-                        )}
-                        <Badge variant={p.isActive ? 'success' : 'neutral'} className="text-[0.65rem]">
-                          {p.isActive ? 'Faol' : 'Nofaol'}
-                        </Badge>
+                        <span className="font-bold text-sm text-foreground">{getLocalizedText(p.name, 'uz')}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggle.mutate(p)}
+                          disabled={toggle.isPending}
+                          title="Holatni o'zgartirish"
+                        >
+                          <Badge variant={p.isActive ? 'success' : 'neutral'} className="text-[0.65rem] cursor-pointer hover:opacity-80 transition-opacity">
+                            {p.isActive ? 'Faol' : 'Nofaol'}
+                          </Badge>
+                        </button>
                       </div>
                       {p.description && <p className="text-xs text-muted-foreground mt-0.5">{getLocalizedText(p.description, 'uz')}</p>}
                     </div>

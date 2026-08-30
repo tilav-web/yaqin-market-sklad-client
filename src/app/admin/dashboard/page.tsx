@@ -7,7 +7,6 @@ import {
   BarChart3,
   BookOpen,
   Calendar,
-  CheckCircle2,
   ClipboardList,
   CreditCard,
   FileText,
@@ -25,7 +24,6 @@ import {
   UserCheck,
   Users,
   Wallet,
-  type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 

@@ -2,15 +2,11 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
-  ArrowLeft,
   CheckCircle2,
   ChevronRight,
   Package,
-  QrCode,
   ShieldCheck,
   Smartphone,
-  Store,
-  Tag,
   Truck,
 } from 'lucide-react';
 
@@ -74,10 +70,10 @@ export async function generateStaticParams() {
   try {
     const res = await fetch(`${apiUrl}/api/catalog/seo/sitemap-data`, { cache: 'no-store' });
     if (!res.ok) return [{ slug: 'sample' }];
-    const data = await res.json();
+    const data = (await res.json()) as { products?: Array<{ slug?: string }> };
     const params = (data.products || [])
-      .filter((p: any) => p.slug)
-      .map((p: any) => ({ slug: p.slug }));
+      .filter((p): p is { slug: string } => Boolean(p.slug))
+      .map((p) => ({ slug: p.slug }));
     return params.length > 0 ? params : [{ slug: 'sample' }];
   } catch {
     return [{ slug: 'sample' }];

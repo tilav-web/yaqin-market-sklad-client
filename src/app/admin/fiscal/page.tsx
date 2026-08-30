@@ -13,6 +13,7 @@ import { Card, Input } from '@/components/ui/card';
 import { I18nInput, I18nValue } from '@/components/ui/i18n-input';
 import { api, extractErrorMessage } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { getLocalizedText } from '@/lib/transliteration';
 import { useEscapeKey } from '@/lib/use-escape-key';
 import { toast } from '@/stores/toast';
 
@@ -248,7 +249,7 @@ function ReceiptRow({
                   {r.lines.map((l) => (
                     <tr key={l.orderItemId} className="border-t border-border/50">
                       <td className="py-1">
-                        {typeof l.productName === 'object' ? (l.productName as any)?.uz || '' : l.productName}
+                        {getLocalizedText(l.productName, 'uz')}
                         {l.markingRequired && (
                           <Badge
                             variant={(l.markingCodes?.length ?? 0) >= l.quantity ? 'success' : 'warning'}
@@ -362,7 +363,7 @@ function TaxCategoriesSection() {
             </thead>
             <tbody className="divide-y divide-border">
               {listQ.data.map((c) => {
-                const titleStr = typeof c.title === 'object' ? (c.title as any)?.uz || '' : c.title;
+                const titleStr = getLocalizedText(c.title, 'uz');
                 return (
                   <tr key={c.id} className="transition-colors hover:bg-muted/30">
                     <td className="px-4 py-3 font-semibold text-foreground">{titleStr}</td>
@@ -387,7 +388,9 @@ function TaxCategoriesSection() {
                           setModal({
                             id: c.id,
                             form: {
-                              title: typeof c.title === 'object' ? { uz: (c.title as any)?.uz || '', kr: (c.title as any)?.kr || '', ru: (c.title as any)?.ru || '' } : { uz: c.title || '', kr: '', ru: '' },
+                              title: typeof c.title === 'object' && c.title !== null
+                                ? { uz: c.title.uz || '', kr: c.title.kr || '', ru: c.title.ru || '' }
+                                : { uz: typeof c.title === 'string' ? c.title : '', kr: '', ru: '' },
                               mxikCode: c.mxikCode,
                               packageCode: c.packageCode ?? '',
                               unitCode: c.unitCode ?? '',
@@ -580,7 +583,7 @@ function MissingProductsSection() {
                   <Fragment key={p.id}>
                     <tr className="border-t hover:bg-muted/30">
                       <td className="px-4 py-2">
-                        {typeof p.name === 'object' ? (p.name as any)?.uz || '' : p.name}
+                        {getLocalizedText(p.name, 'uz')}
                         {p.brand && <span className="ml-1 text-xs text-muted-foreground">({p.brand})</span>}
                       </td>
                       <td className="px-4 py-2 font-mono text-xs">{p.barcode ?? '—'}</td>
@@ -593,7 +596,7 @@ function MissingProductsSection() {
                         >
                           <option value="">— tanlang —</option>
                           {activeCategories.map((c) => {
-                            const cTitle = typeof c.title === 'object' ? (c.title as any)?.uz || '' : c.title;
+                            const cTitle = getLocalizedText(c.title, 'uz');
                             return (
                               <option key={c.id} value={c.id}>
                                 {cTitle} ({c.mxikCode})

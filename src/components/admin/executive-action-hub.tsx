@@ -8,16 +8,11 @@ import {
   CreditCard,
   FileText,
   KeyRound,
-  RefreshCw,
   ShieldAlert,
-  Sparkles,
-  Store,
-  Wallet,
 } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
 
-import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 

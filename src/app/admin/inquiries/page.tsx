@@ -21,6 +21,8 @@ interface Inquiry {
 
 type ReadFilter = 'all' | 'unread' | 'read';
 
+const EMPTY_INQUIRIES: Inquiry[] = [];
+
 export default function InquiriesPage() {
   const qc = useQueryClient();
   const [markReadErr, setMarkReadErr] = useState('');
@@ -43,7 +45,7 @@ export default function InquiriesPage() {
     onError: (e) => setMarkReadErr(extractErrorMessage(e)),
   });
 
-  const all = inquiriesQuery.data ?? [];
+  const all = inquiriesQuery.data ?? EMPTY_INQUIRIES;
   const unread = all.filter((i) => !i.isRead).length;
 
   const inquiries = useMemo(() => {

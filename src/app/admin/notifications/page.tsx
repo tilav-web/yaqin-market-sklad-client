@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
 import { api, extractErrorMessage } from '@/lib/api';
+import { getLocalizedText } from '@/lib/transliteration';
 import { toast } from '@/stores/toast';
 import { stripHtml, uploadImageFile } from '@/lib/notif-utils';
 import { sanitizeHtml } from '@/lib/sanitize';
@@ -69,13 +70,23 @@ function audienceReducer(state: AudienceState, action: AudienceAction): Audience
       return { ...state, userPage: action.value };
     case 'TOGGLE_USER': {
       const next = new Set(state.selectedIds);
-      next.has(action.id) ? next.delete(action.id) : next.add(action.id);
+      if (next.has(action.id)) {
+        next.delete(action.id);
+      } else {
+        next.add(action.id);
+      }
       return { ...state, selectedIds: next };
     }
     case 'TOGGLE_PAGE_ALL': {
       const allSelected = action.ids.every((id) => state.selectedIds.has(id));
       const next = new Set(state.selectedIds);
-      action.ids.forEach((id) => allSelected ? next.delete(id) : next.add(id));
+      action.ids.forEach((id) => {
+        if (allSelected) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+      });
       return { ...state, selectedIds: next };
     }
     case 'CLEAR_SELECTION':
@@ -127,7 +138,7 @@ function ImgPreview({ url, onRemove }: { url: string; onRemove: () => void }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={`${API_URL}${url}`} alt="" className="h-12 w-12 rounded object-cover border border-border" />
       <span className="text-xs font-medium text-green-600">Yuklandi ✓</span>
-      <button type="button" onClick={onRemove} className="ml-auto text-xs text-destructive">O'chirish</button>
+      <button type="button" onClick={onRemove} className="ml-auto text-xs text-destructive">O&apos;chirish</button>
     </div>
   );
 }
@@ -171,15 +182,15 @@ function TemplateManager({
   });
 
   if (templates.length === 0)
-    return <p className="text-sm text-muted-foreground py-2">Shablon yo'q.</p>;
+    return <p className="text-sm text-muted-foreground py-2">Shablon yo&apos;q.</p>;
 
   return (
     <div className="space-y-1.5">
       {templates.map((t) => {
         const isExp = expandedId === t.id;
         const isEd = editingId === t.id;
-        const titleStr = typeof t.title === 'object' ? (t.title as any)?.uz || '' : t.title;
-        const bodyStr = typeof t.body === 'object' ? (t.body as any)?.uz || '' : t.body;
+        const titleStr = getLocalizedText(t.title, 'uz');
+        const bodyStr = getLocalizedText(t.body, 'uz');
         return (
           <div key={t.id} className={`rounded-lg border overflow-hidden transition-colors ${selectedId === t.id ? 'border-primary' : 'border-border'}`}>
             <button className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-muted/30 transition-colors"
@@ -211,7 +222,7 @@ function TemplateManager({
                   <Button size="sm" variant="outline" className="text-destructive hover:text-destructive"
                     disabled={deleteTpl.isPending}
                     onClick={() => { setDeleteErr(''); setPendingDeleteId(t.id); }}>
-                    <Trash2 className="size-3.5" /> O'chirish
+                    <Trash2 className="size-3.5" /> O&apos;chirish
                   </Button>
                 </div>
               </div>
@@ -491,7 +502,7 @@ function NotificationsInner() {
             {!tpl.showManager && !tpl.showNew && (
               <div className="flex flex-wrap gap-2">
                 {templates.length === 0
-                  ? <p className="text-xs text-muted-foreground">Shablon yo'q</p>
+                  ? <p className="text-xs text-muted-foreground">Shablon yo&apos;q</p>
                   : templates.map((t) => (
                     <button key={t.id} type="button" onClick={() => applyTemplate(t)}
                       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors whitespace-nowrap

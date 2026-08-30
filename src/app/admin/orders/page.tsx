@@ -2,23 +2,14 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  AlertTriangle,
-  Building2,
   Calendar,
   CheckCircle2,
-  ChevronRight,
   Clock,
-  CreditCard,
   Download,
   Eye,
   MapPin,
-  Navigation,
   Package,
-  Phone,
-  RefreshCw,
   Search,
-  ShieldCheck,
-  ShieldOff,
   ShoppingBag,
   Store,
   Truck,
@@ -26,7 +17,7 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
 import { Pagination } from '@/components/admin/pagination';
@@ -338,12 +329,12 @@ export default function AdminOrdersPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(0);
-  const [detailId, setDetailId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get('order');
-    if (id) setDetailId(id);
-  }, []);
+  const [detailId, setDetailId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return new URLSearchParams(window.location.search).get('order');
+    }
+    return null;
+  });
 
   const ordersQuery = useQuery<OrdersPageResp>({
     queryKey: ['admin', 'orders', submitted, status, dateFrom, dateTo, page],

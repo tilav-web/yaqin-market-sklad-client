@@ -1,6 +1,6 @@
 'use client';
 
-import { Globe, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { useState } from 'react';
 
 import { Input } from '@/components/ui/card';

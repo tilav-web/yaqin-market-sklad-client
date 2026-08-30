@@ -75,13 +75,23 @@ function usersReducer(state: UsersState, action: UsersAction): UsersState {
       return { ...state, roleFilter: action.value, page: 0, selectedIds: new Set(), selectAllMode: false };
     case 'TOGGLE_USER': {
       const next = new Set(state.selectedIds);
-      next.has(action.id) ? next.delete(action.id) : next.add(action.id);
+      if (next.has(action.id)) {
+        next.delete(action.id);
+      } else {
+        next.add(action.id);
+      }
       return { ...state, selectedIds: next };
     }
     case 'TOGGLE_PAGE_ALL': {
       const allSelected = action.ids.every((id) => state.selectedIds.has(id));
       const next = new Set(state.selectedIds);
-      action.ids.forEach((id) => allSelected ? next.delete(id) : next.add(id));
+      action.ids.forEach((id) => {
+        if (allSelected) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+      });
       return { ...state, selectedIds: next, selectAllMode: false };
     }
     case 'SELECT_ALL_MODE':

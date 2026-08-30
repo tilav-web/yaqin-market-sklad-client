@@ -69,8 +69,11 @@ export function CatalogImportModal({ onClose }: { onClose: () => void }) {
       // The server DTO doesn't declare `warnings` (preview-only, display
       // concern) — the global ValidationPipe has forbidNonWhitelisted:true,
       // so it must be stripped before sending back (same pattern the
-      // seller-side Excel import client uses).
-      const rows = preview.rows.map(({ warnings: _warnings, ...row }) => row);
+      const rows = preview.rows.map((row) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { warnings, ...cleanRow } = row;
+        return cleanRow;
+      });
       const res = await api.post<ConfirmResult>('/admin/catalog/import/confirm', { rows });
       return res.data;
     },

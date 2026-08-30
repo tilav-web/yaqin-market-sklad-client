@@ -89,7 +89,7 @@ export default function AdminDebtsPage() {
       ) : debts.length === 0 ? (
         <Card className="flex items-center gap-3 p-6">
           <Check className="size-5 text-green-600" />
-          <p className="text-sm text-muted-foreground">Muddati o'tgan qarzlar yo'q</p>
+          <p className="text-sm text-muted-foreground">Muddati o&apos;tgan qarzlar yo&apos;q</p>
         </Card>
       ) : (
         <div className="space-y-4">
@@ -116,7 +116,7 @@ export default function AdminDebtsPage() {
                     </div>
                   </div>
                 </div>
-                <Badge variant="danger">Muddati o'tgan</Badge>
+                <Badge variant="danger">Muddati o&apos;tgan</Badge>
               </div>
 
               {/* Forgive debt */}

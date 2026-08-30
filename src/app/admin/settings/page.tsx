@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   Boxes,
   Building2,
-  Calendar,
   Check,
   CheckCircle2,
   Clock,
@@ -28,13 +27,11 @@ import {
   ShieldAlert,
   ShieldCheck,
   Smartphone,
-  Sparkles,
   Star,
   Store,
   Timer,
   TrendingUp,
   TriangleAlert,
-  Truck,
   Zap,
 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
@@ -621,6 +618,8 @@ function DidoxConnectionTester({ didoxKey }: { didoxKey?: string }) {
   );
 }
 
+const EMPTY_SETTINGS: Setting[] = [];
+
 export default function SettingsPage() {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<SettingsTab>('finance');
@@ -665,7 +664,7 @@ export default function SettingsPage() {
     },
   });
 
-  const settingsList = data ?? [];
+  const settingsList = data ?? EMPTY_SETTINGS;
 
   const tabItems = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();

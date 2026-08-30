@@ -6,9 +6,7 @@ import {
   Layers,
   Package,
   ShieldCheck,
-  ShoppingBag,
   Smartphone,
-  Truck,
 } from 'lucide-react';
 
 interface LocalizedText {
@@ -62,10 +60,10 @@ export async function generateStaticParams() {
   try {
     const res = await fetch(`${apiUrl}/api/catalog/seo/sitemap-data`, { cache: 'no-store' });
     if (!res.ok) return [{ slug: 'sample' }];
-    const data = await res.json();
+    const data = (await res.json()) as { categories?: Array<{ slug?: string }> };
     const params = (data.categories || [])
-      .filter((c: any) => c.slug)
-      .map((c: any) => ({ slug: c.slug }));
+      .filter((c): c is { slug: string } => Boolean(c.slug))
+      .map((c) => ({ slug: c.slug }));
     return params.length > 0 ? params : [{ slug: 'sample' }];
   } catch {
     return [{ slug: 'sample' }];
@@ -238,12 +236,12 @@ export default async function CategoryPage({
               </div>
             </div>
 
-            <a
+            <Link
               href="/#download"
               className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm self-start sm:self-auto">
               <Smartphone className="size-4" />
               Ilovada buyurtma berish
-            </a>
+            </Link>
           </div>
 
           {/* Subcategories (if any) */}

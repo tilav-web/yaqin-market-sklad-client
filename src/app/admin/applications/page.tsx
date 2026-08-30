@@ -2,9 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  AlertCircle,
   Building2,
-  Calendar,
   Check,
   CheckCircle2,
   Clock,
@@ -16,7 +14,6 @@ import {
   Search,
   ShieldCheck,
   Store,
-  User,
   X,
   XCircle,
 } from 'lucide-react';
@@ -83,6 +80,8 @@ const FILTERS: { key: Filter; label: string; icon: React.ElementType }[] = [
   { key: 'all', label: 'Barcha arizalar', icon: FileText },
 ];
 
+const EMPTY_APPS: SellerApplication[] = [];
+
 export default function ApplicationsPage() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<Filter>('pending');
@@ -107,7 +106,7 @@ export default function ApplicationsPage() {
     },
   });
 
-  const apps = appsQuery.data ?? [];
+  const apps = appsQuery.data ?? EMPTY_APPS;
 
   const counts = useMemo(
     () => ({

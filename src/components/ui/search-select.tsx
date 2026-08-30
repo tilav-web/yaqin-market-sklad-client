@@ -68,9 +68,11 @@ export function SearchSelect({
   // Focus search input on open
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 50);
+      const t = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(t);
     } else {
-      setSearch('');
+      const t = setTimeout(() => setSearch(''), 0);
+      return () => clearTimeout(t);
     }
   }, [isOpen]);
 

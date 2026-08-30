@@ -104,7 +104,7 @@ export default function AdminAnalyticsPage() {
             <button className="underline ml-1" onClick={() => timelineQ.refetch()}>qayta urinish</button>
           </div>
         ) : timeline.length === 0 ? (
-          <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">Ma'lumot yo'q</div>
+          <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">Ma&apos;lumot yo&apos;q</div>
         ) : (
           <div className="overflow-x-auto">
             <div className="flex items-end gap-1 min-w-[600px] h-40">
@@ -135,7 +135,7 @@ export default function AdminAnalyticsPage() {
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-4">
             <Store className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold">Top 10 do'kon (30 kun)</h2>
+            <h2 className="font-semibold">Top 10 do&apos;kon (30 kun)</h2>
           </div>
           {shopsQ.isLoading ? (
             <p className="text-sm text-muted-foreground">Yuklanmoqda…</p>
@@ -145,7 +145,7 @@ export default function AdminAnalyticsPage() {
               <button className="underline" onClick={() => shopsQ.refetch()}>qayta urinish</button>
             </p>
           ) : (shopsQ.data ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Ma'lumot yo'q</p>
+            <p className="text-sm text-muted-foreground">Ma&apos;lumot yo&apos;q</p>
           ) : (
             <div className="space-y-2">
               {(shopsQ.data ?? []).map((s, i) => (
@@ -178,7 +178,7 @@ export default function AdminAnalyticsPage() {
               <button className="underline" onClick={() => productsQ.refetch()}>qayta urinish</button>
             </p>
           ) : (productsQ.data ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Ma'lumot yo'q</p>
+            <p className="text-sm text-muted-foreground">Ma&apos;lumot yo&apos;q</p>
           ) : (
             <div className="space-y-2">
               {(productsQ.data ?? []).map((p, i) => (
