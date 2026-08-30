@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Save, TriangleAlert } from 'lucide-react';
+import { CheckCircle2, Eye, EyeOff, KeyRound, RefreshCw, Save, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 
 import { PageHeader } from '@/components/admin/page-header';
@@ -36,6 +36,8 @@ const LABEL: Record<string, string> = {
   fiscal_mode: 'Fiskal rejim',
   platform_legal_name: 'Operator (MChJ) nomi',
   platform_stir: 'Operator STIRi',
+  didox_user_key: 'Didox API kaliti (user-key)',
+  didox_api_url: 'Didox API manzili',
   risk_delivered_max_distance_m: '"Yetkazildi" — manzildan max masofa (metr)',
   risk_evidence_max_accuracy_m: 'GPS aniqlik chegarasi (metr)',
   risk_pickup_max_distance_m: '"Kuryerga berish" — do\'kondan max masofa (metr)',
@@ -51,7 +53,7 @@ const LABEL: Record<string, string> = {
 };
 
 /** Server tomonidagi matnli sozlamalar — raqam validatsiyasi qo'llanmaydi. */
-const STRING_KEYS: Record<string, { options?: { value: string; label: string }[] }> = {
+const STRING_KEYS: Record<string, { options?: { value: string; label: string }[]; isSecret?: boolean }> = {
   fiscal_mode: {
     options: [
       { value: 'off', label: 'Off — chek yaratilmaydi' },
@@ -61,6 +63,8 @@ const STRING_KEYS: Record<string, { options?: { value: string; label: string }[]
   },
   platform_legal_name: {},
   platform_stir: {},
+  didox_user_key: { isSecret: true },
+  didox_api_url: {},
 };
 
 /** Mirrors the server's validation in SettingsService.set() — numeric settings are non-negative numbers, commission is additionally capped at 100. */
@@ -133,9 +137,85 @@ function EconomicsPanel({ commissionDraft }: { commissionDraft: string | undefin
   );
 }
 
+function DidoxTestCard({ didoxKey }: { didoxKey?: string }) {
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; data?: any } | null>(null);
+
+  const runTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await api.get('/admin/settings/test-didox', {
+        params: didoxKey ? { key: didoxKey } : {},
+      });
+      setTestResult(res.data);
+      if (res.data.success) {
+        toast.success(res.data.message);
+      } else {
+        toast.error(res.data.message);
+      }
+    } catch (err) {
+      const msg = extractErrorMessage(err);
+      setTestResult({ success: false, message: msg });
+      toast.error(msg);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const isConfigured = Boolean(didoxKey && didoxKey.trim() !== '');
+
+  return (
+    <Card className="space-y-3 border-emerald-500/20 bg-emerald-50/10 px-4 py-3 dark:bg-emerald-950/10">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="size-5 text-emerald-600 dark:text-emerald-400" />
+          <div>
+            <p className="text-sm font-semibold">Soliq & Didox API Integratsiyasi</p>
+            <p className="text-xs text-muted-foreground">
+              STIR bo&apos;yicha Davlat Soliq Qo&apos;mitasi bazasidan haqiqiy korxona va rahbar ma&apos;lumotlarini avtomatik olish.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+            isConfigured ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+          }`}>
+            {isConfigured ? <CheckCircle2 className="size-3" /> : <KeyRound className="size-3" />}
+            {isConfigured ? 'Token mavjud' : 'Token kiritilmagan'}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={testing}
+            onClick={runTest}
+            className="text-xs"
+          >
+            <RefreshCw className={`size-3 ${testing ? 'animate-spin' : ''}`} />
+            Ulanishni tekshirish
+          </Button>
+        </div>
+      </div>
+      {testResult && (
+        <div className={`rounded-md p-2.5 text-xs ${
+          testResult.success ? 'bg-emerald-100/60 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200' : 'bg-destructive/10 text-destructive'
+        }`}>
+          <p className="font-semibold">{testResult.message}</p>
+          {testResult.data && (
+            <pre className="mt-1 max-h-32 overflow-auto text-[11px] opacity-80">
+              {JSON.stringify(testResult.data, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function SettingsPage() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Record<string, string>>({});
+  const [showSecret, setShowSecret] = useState<Record<string, boolean>>({});
 
   const { data, isLoading, isError, error, refetch } = useQuery<Setting[]>({
     queryKey: ['admin', 'settings'],
@@ -177,16 +257,22 @@ export default function SettingsPage() {
     );
   }
 
+  const didoxKeyVal = editing.didox_user_key ?? data?.find((s) => s.key === 'didox_user_key')?.value;
+
   return (
     <div className="mx-auto max-w-2xl p-6">
       <PageHeader title="Sozlamalar" description="Komissiya, soliq, fiskal va boshqa parametrlar" />
       <div className="mt-6 space-y-3">
         <EconomicsPanel commissionDraft={editing.commission_rate_default} />
+        <DidoxTestCard didoxKey={didoxKeyVal} />
         {(data ?? []).map((s) => {
           const val = editing[s.key] ?? s.value;
           const dirty = editing[s.key] !== undefined;
           const valid = isValidSettingValue(s.key, val);
           const stringKey = STRING_KEYS[s.key];
+          const isSecret = stringKey?.isSecret;
+          const isRevealed = Boolean(showSecret[s.key]);
+
           return (
             <Card key={s.key} className="flex flex-col gap-2 px-4 py-3">
               <div className="flex items-center gap-4">
@@ -205,13 +291,24 @@ export default function SettingsPage() {
                     ))}
                   </select>
                 ) : stringKey ? (
-                  <input
-                    type="text"
-                    className="w-48 rounded-md border border-border bg-background px-2 py-1 text-sm"
-                    value={val}
-                    placeholder="—"
-                    onChange={(e) => setEditing((prev) => ({ ...prev, [s.key]: e.target.value }))}
-                  />
+                  <div className="relative flex items-center">
+                    <input
+                      type={isSecret && !isRevealed ? 'password' : 'text'}
+                      className="w-48 rounded-md border border-border bg-background px-2 py-1 text-sm pr-7"
+                      value={val}
+                      placeholder="—"
+                      onChange={(e) => setEditing((prev) => ({ ...prev, [s.key]: e.target.value }))}
+                    />
+                    {isSecret && (
+                      <button
+                        type="button"
+                        onClick={() => setShowSecret((p) => ({ ...p, [s.key]: !p[s.key] }))}
+                        className="absolute right-1.5 text-muted-foreground hover:text-foreground"
+                      >
+                        {isRevealed ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <input
                     type="number"
@@ -245,6 +342,11 @@ export default function SettingsPage() {
               {s.key === 'platform_stir' && (
                 <p className="text-xs text-muted-foreground">
                   MChJ ro&apos;yxatdan o&apos;tgach kiritiladi — fiskal cheklar shu rekvizit bilan chiqadi. Bo&apos;sh bo&apos;lsa cheklar &quot;ma&apos;lumot yetishmaydi&quot; holatida to&apos;planadi.
+                </p>
+              )}
+              {s.key === 'didox_user_key' && (
+                <p className="text-xs text-muted-foreground">
+                  Didox shaxsiy kabinetingizdan olingan API kaliti. Yangi sotuvchilar ro&apos;yxatdan o&apos;tayotganda Davlat Soliq bazasidan ma&apos;lumotlarni avtomatik tortadi.
                 </p>
               )}
             </Card>
