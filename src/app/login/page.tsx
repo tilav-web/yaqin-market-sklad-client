@@ -134,11 +134,22 @@ export default function LoginPage() {
       <Card className="relative w-full max-w-md p-8 bg-card/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl">
         {/* Brand Logo & Header */}
         <div className="mb-6 flex items-center gap-3.5">
-          <div className="flex size-12 items-center justify-center rounded-xl bg-primary text-xl font-black text-primary-foreground shadow-lg shadow-primary/30">
-            Y
+          <div className="size-12 rounded-2xl overflow-hidden shadow-lg border border-primary/20 bg-card p-1.5 flex items-center justify-center">
+            <img
+              src="/logo.png"
+              alt="Yaqin Market"
+              className="size-full object-contain"
+            />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground tracking-tight">Yaqin Market</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-xl font-extrabold text-foreground tracking-tight">
+                Yaqin<span className="text-primary">Market</span>
+              </h1>
+              <span className="text-[0.62rem] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-primary/10 text-primary border border-primary/20">
+                Admin
+              </span>
+            </div>
             <p className="text-xs text-muted-foreground font-medium">Boshqaruv va xodimlar paneli</p>
           </div>
         </div>
