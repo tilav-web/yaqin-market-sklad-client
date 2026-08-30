@@ -1,16 +1,30 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Download, X } from 'lucide-react';
-import { useState } from 'react';
+import {
+  Check,
+  CheckCircle2,
+  Clock,
+  Copy,
+  CreditCard,
+  Download,
+  Phone,
+  RefreshCw,
+  Search,
+  Store,
+  User,
+  X,
+  XCircle,
+} from 'lucide-react';
+import React, { useState } from 'react';
 
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { PageHeader } from '@/components/admin/page-header';
 import { Pagination } from '@/components/admin/pagination';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { api, downloadFile, extractErrorMessage } from '@/lib/api';
+import { cn } from '@/lib/cn';
 import { toast } from '@/stores/toast';
 
 interface Withdrawal {
@@ -26,31 +40,36 @@ interface Withdrawal {
   seller: { id: string; name: string | null; phone: string } | null;
 }
 
-interface WithdrawalsPageResp { items: Withdrawal[]; total: number }
+interface WithdrawalsPageResp {
+  items: Withdrawal[];
+  total: number;
+}
 
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 25;
+const fmt = (v: string | number) => Number(v || 0).toLocaleString('uz-UZ') + " so'm";
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: 'Kutilmoqda',
-  processing: 'Jarayonda',
-  completed: 'Bajarildi',
-  rejected: 'Rad etildi',
+const STATUS_META: Record<
+  Withdrawal['status'],
+  { label: string; color: string; icon: React.ElementType }
+> = {
+  pending: { label: 'Kutilmoqda', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20', icon: Clock },
+  processing: { label: 'Jarayonda', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20', icon: RefreshCw },
+  completed: { label: 'Bajarildi', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20', icon: CheckCircle2 },
+  rejected: { label: 'Rad etildi', color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20', icon: XCircle },
 };
-type BadgeV = 'neutral' | 'primary' | 'success' | 'warning' | 'danger';
-const STATUS_COLOR: Record<string, BadgeV> = {
-  pending: 'warning',
-  processing: 'primary',
-  completed: 'success',
-  rejected: 'danger',
-};
 
-const fmt = (v: string) => Number(v).toLocaleString('uz-UZ') + " so'm";
+const STATUS_TABS: { key: Withdrawal['status']; label: string; icon: React.ElementType }[] = [
+  { key: 'pending', label: 'Kutilmoqda', icon: Clock },
+  { key: 'processing', label: 'Jarayonda', icon: RefreshCw },
+  { key: 'completed', label: 'Bajarilgan', icon: CheckCircle2 },
+  { key: 'rejected', label: 'Rad etilgan', icon: XCircle },
+];
 
 type PendingDecision = { withdrawal: Withdrawal; approve: boolean };
 
 export default function WithdrawalsPage() {
   const qc = useQueryClient();
-  const [filter, setFilter] = useState<string>('pending');
+  const [filter, setFilter] = useState<Withdrawal['status']>('pending');
   const [page, setPage] = useState(0);
   const [note, setNote] = useState<Record<string, string>>({});
   const [pendingDecision, setPendingDecision] = useState<PendingDecision | null>(null);
@@ -58,171 +77,272 @@ export default function WithdrawalsPage() {
   const withdrawalsQuery = useQuery<WithdrawalsPageResp>({
     queryKey: ['admin', 'withdrawals', filter, page],
     queryFn: async () =>
-      (await api.get('/admin/balance/withdrawals', {
-        params: { status: filter, limit: PAGE_SIZE, offset: page * PAGE_SIZE },
-      })).data,
+      (
+        await api.get('/admin/balance/withdrawals', {
+          params: { status: filter, limit: PAGE_SIZE, offset: page * PAGE_SIZE },
+        })
+      ).data,
     placeholderData: (prev) => prev,
   });
+
   const { isLoading, isError, error, refetch } = withdrawalsQuery;
   const items = withdrawalsQuery.data?.items ?? [];
   const total = withdrawalsQuery.data?.total ?? 0;
 
-  const process = useMutation({
-    mutationFn: ({ id, approve, adminNote }: { id: string; approve: boolean; adminNote?: string }) =>
-      api.put(`/admin/balance/withdrawals/${id}/process`, { approve, note: adminNote }),
+  const processMutation = useMutation({
+    mutationFn: ({
+      id,
+      approve,
+      adminNote,
+    }: {
+      id: string;
+      approve: boolean;
+      adminNote?: string;
+    }) => api.put(`/admin/balance/withdrawals/${id}/process`, { approve, note: adminNote }),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['admin', 'withdrawals'] });
       setPendingDecision(null);
-      toast.success(vars.approve ? "So'rov tasdiqlandi" : "So'rov rad etildi");
+      toast.success(vars.approve ? "So'rov tasdiqlandi va bajarildi" : "So'rov rad etildi");
     },
+    onError: (e) => toast.error(extractErrorMessage(e)),
   });
 
   const [exportErr, setExportErr] = useState('');
   const exportXlsx = useMutation({
-    mutationFn: () => downloadFile('/admin/balance/withdrawals/export', 'yechish-sorovlar.xlsx', { status: filter }),
+    mutationFn: () =>
+      downloadFile('/admin/balance/withdrawals/export', 'yechish-sorovlar.xlsx', { status: filter }),
     onError: (e) => setExportErr(extractErrorMessage(e)),
   });
 
+  const copyCardNumber = (cardNum: string) => {
+    navigator.clipboard.writeText(cardNum.replace(/\s+/g, ''));
+    toast.success('Karta raqami nusxalandi');
+  };
+
   return (
-    <div className="p-6">
+    <div className="space-y-6">
+      {/* Page Header */}
       <PageHeader
-        title="Yechish so'rovlar"
-        description="Seller mablag' yechish arizalari"
+        title="Pul Yechish So'rovlari"
+        description="Sotuvchilar (seller) tomonidan karta orqali pul yechish arizalarini ko'rib chiqish va to'lovni tasdiqlash"
+        breadcrumbs={[{ label: 'Moliya & Soliq' }, { label: 'Pul yechish' }]}
         actions={
-          <Button variant="outline" size="sm" disabled={exportXlsx.isPending} onClick={() => { setExportErr(''); exportXlsx.mutate(); }}>
-            <Download className="size-4" /> {exportXlsx.isPending ? 'Yuklanmoqda…' : 'Eksport'}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={exportXlsx.isPending}
+            onClick={() => {
+              setExportErr('');
+              exportXlsx.mutate();
+            }}
+            className="h-9 gap-1.5 rounded-xl border-border px-3.5 text-xs font-semibold">
+            <Download className="size-3.5 text-primary" />
+            {exportXlsx.isPending ? 'Yuklanmoqda…' : 'Excel Eksport'}
           </Button>
         }
       />
+
       {exportErr && (
-        <p className="mt-4 rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{exportErr}</p>
+        <div className="rounded-xl bg-destructive/10 p-3 text-xs font-medium text-destructive">
+          {exportErr}
+        </div>
       )}
 
-      <div className="mt-6 flex gap-2">
-        {(['pending', 'processing', 'completed', 'rejected'] as const).map((s) => (
-          <button
-            key={s}
-            onClick={() => { setFilter(s); setPage(0); }}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-              filter === s
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
-          >
-            {STATUS_LABEL[s]}
-          </button>
-        ))}
+      {/* Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
+        {STATUS_TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = filter === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => {
+                setFilter(tab.key);
+                setPage(0);
+              }}
+              className={cn(
+                'flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all',
+                isActive
+                  ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+                  : 'bg-card border border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/50',
+              )}>
+              <Icon className="size-3.5" />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {isLoading && <p className="mt-4 text-sm text-muted-foreground">Yuklanmoqda…</p>}
-      {isError && (
-        <p className="mt-4 text-sm text-destructive">
-          {extractErrorMessage(error)} —{' '}
-          <button className="underline" onClick={() => refetch()}>qayta urinish</button>
-        </p>
-      )}
+      {/* Withdrawals List / Grid */}
+      {isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-44 animate-pulse rounded-2xl bg-muted/60" />
+          ))}
+        </div>
+      ) : isError ? (
+        <div className="flex h-64 flex-col items-center justify-center gap-3">
+          <p className="text-sm font-medium text-destructive">{extractErrorMessage(error)}</p>
+          <Button onClick={() => refetch()} variant="outline" size="sm">
+            Qayta urinish
+          </Button>
+        </div>
+      ) : items.length === 0 ? (
+        <Card className="flex flex-col items-center justify-center py-16 text-center border-dashed rounded-2xl">
+          <CreditCard className="size-12 text-muted-foreground/40 mb-3" />
+          <h4 className="text-sm font-bold text-foreground">So&apos;rovlar mavjud emas</h4>
+          <p className="text-xs text-muted-foreground mt-0.5">Ushbu bo&apos;limda arizalar topilmadi</p>
+        </Card>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {items.map((w) => {
+            const meta = STATUS_META[w.status];
+            const isPending = w.status === 'pending';
 
-      <div className="mt-4 space-y-3">
-        {items.map((w) => (
-          <Card key={w.id} className="p-4">
-            <div className="flex flex-wrap items-start gap-4">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <Badge variant={STATUS_COLOR[w.status]}>{STATUS_LABEL[w.status]}</Badge>
-                  <span className="text-lg font-bold text-green-600">{fmt(w.amount)}</span>
-                </div>
-                {w.seller && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Sotuvchi: <span className="text-foreground">{w.seller.name || w.seller.phone}</span>
-                  </p>
-                )}
-                <p className="mt-1 text-sm font-medium">{w.bankCardHolderName}</p>
-                <p className="font-mono text-sm text-muted-foreground">{w.bankCardNumber}</p>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(w.requestedAt).toLocaleString('uz-UZ')}
-                </p>
-                {w.adminNote && (
-                  <p className="mt-1 text-xs text-muted-foreground">Izoh: {w.adminNote}</p>
-                )}
-              </div>
+            return (
+              <Card
+                key={w.id}
+                className={cn(
+                  'flex flex-col justify-between overflow-hidden rounded-2xl border p-5 transition-all shadow-xs hover:shadow-md',
+                  isPending
+                    ? 'border-amber-500/30 bg-card hover:border-amber-500/50'
+                    : 'border-border/80 bg-card',
+                )}>
+                <div>
+                  {/* Card Header */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary font-bold">
+                        <CreditCard className="size-5" />
+                      </div>
+                      <div>
+                        <p className="text-lg sm:text-xl font-extrabold text-foreground font-mono leading-tight">
+                          {fmt(w.amount)}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                          Sotuvchi: <strong className="text-foreground">{w.seller?.name || 'Seller'}</strong>
+                        </p>
+                      </div>
+                    </div>
 
-              {w.status === 'pending' && (
-                <div className="flex flex-col gap-2">
-                  <input
-                    className="rounded-md border border-border bg-background px-2 py-1 text-xs"
-                    placeholder="Izoh (ixtiyoriy)"
-                    value={note[w.id] ?? ''}
-                    onChange={(e) => setNote((p) => ({ ...p, [w.id]: e.target.value }))}
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => setPendingDecision({ withdrawal: w, approve: false })}
-                    >
-                      <X className="size-3" />
-                      Rad
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => setPendingDecision({ withdrawal: w, approve: true })}
-                    >
-                      <Check className="size-3" />
-                      Tasdiqlash
-                    </Button>
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.68rem] font-bold border',
+                        meta.color,
+                      )}>
+                      {meta.label}
+                    </span>
+                  </div>
+
+                  {/* Bank Card Box */}
+                  <div className="mt-4 rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground font-semibold">Karta raqami:</span>
+                      <button
+                        type="button"
+                        onClick={() => copyCardNumber(w.bankCardNumber)}
+                        className="flex items-center gap-1.5 font-mono font-bold text-foreground bg-card border border-border px-2.5 py-1 rounded-lg hover:border-primary/50 transition-colors">
+                        💳 {w.bankCardNumber}
+                        <Copy className="size-3 text-muted-foreground" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between text-muted-foreground pt-1 border-t border-border/40">
+                      <span>Karta egasi:</span>
+                      <strong className="text-foreground uppercase font-semibold">
+                        {w.bankCardHolderName}
+                      </strong>
+                    </div>
+
+                    {w.seller?.phone && (
+                      <div className="flex items-center justify-between text-muted-foreground pt-1 border-t border-border/40">
+                        <span>Telefon:</span>
+                        <span className="text-foreground font-mono">{w.seller.phone}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between text-muted-foreground pt-1 border-t border-border/40">
+                      <span>So&apos;ralgan vaqt:</span>
+                      <span>{new Date(w.requestedAt).toLocaleString('uz-UZ')}</span>
+                    </div>
+
+                    {w.adminNote && (
+                      <div className="rounded-lg bg-muted p-2 text-muted-foreground font-medium mt-2">
+                        Izoh: {w.adminNote}
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-            </div>
-          </Card>
-        ))}
 
-        {!isLoading && items.length === 0 && (
-          <p className="py-8 text-center text-sm text-muted-foreground">So'rovlar yo'q</p>
-        )}
-      </div>
+                {/* Pending Actions */}
+                {isPending && (
+                  <div className="mt-4 pt-3 border-t border-border/60 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <input
+                      type="text"
+                      placeholder="Admin izohi (ixtiyoriy)..."
+                      value={note[w.id] ?? ''}
+                      onChange={(e) => setNote((p) => ({ ...p, [w.id]: e.target.value }))}
+                      className="h-8.5 rounded-xl border border-border bg-background px-3 text-xs font-medium outline-none flex-1"
+                    />
 
-      <div className="mt-4">
-        <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPage={setPage} />
-      </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPendingDecision({ withdrawal: w, approve: false })}
+                        className="h-8.5 gap-1 rounded-xl border-destructive/30 text-xs font-bold text-destructive hover:bg-destructive/10">
+                        <X className="size-3.5" />
+                        Rad etish
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => setPendingDecision({ withdrawal: w, approve: true })}
+                        className="h-8.5 gap-1 rounded-xl px-4 text-xs font-bold">
+                        <Check className="size-3.5" />
+                        Tasdiqlash
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
-      <ConfirmDialog
-        open={!!pendingDecision}
-        title={pendingDecision?.approve ? "Yechish so'rovini tasdiqlash" : "Yechish so'rovini rad etish"}
-        description={pendingDecision && (
-          <div className="space-y-1">
-            <p>
-              Karta egasi: <span className="font-medium text-foreground">{pendingDecision.withdrawal.bankCardHolderName}</span>
-            </p>
-            <p className="font-mono">{pendingDecision.withdrawal.bankCardNumber}</p>
-            <p>
-              Summasi:{' '}
-              <span className="font-semibold text-foreground">{fmt(pendingDecision.withdrawal.amount)}</span>
-            </p>
-            {note[pendingDecision.withdrawal.id] && (
-              <p>Izoh: {note[pendingDecision.withdrawal.id]}</p>
-            )}
-            <p className="mt-2 text-destructive">
-              {pendingDecision.approve
-                ? "Tasdiqlangandan so'ng holat 'jarayonda'ga o'tadi va bank o'tkazmasi amalga oshiriladi — bekor qilib bo'lmaydi."
-                : "Rad etilgan mablag' sotuvchining mavjud balansiga qaytariladi."}
-            </p>
-          </div>
-        )}
-        confirmLabel={pendingDecision?.approve ? 'Ha, tasdiqlash' : 'Ha, rad etish'}
-        destructive={!pendingDecision?.approve}
-        pending={process.isPending}
-        error={process.isError ? extractErrorMessage(process.error) : ''}
-        onConfirm={() => {
-          if (!pendingDecision) return;
-          process.mutate({
-            id: pendingDecision.withdrawal.id,
-            approve: pendingDecision.approve,
-            adminNote: note[pendingDecision.withdrawal.id],
-          });
-        }}
-        onCancel={() => setPendingDecision(null)}
-      />
+      {total > PAGE_SIZE && (
+        <div className="border-t border-border p-3">
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            onChange={setPage}
+          />
+        </div>
+      )}
+
+      {/* Decision Confirm Dialog */}
+      {pendingDecision && (
+        <ConfirmDialog
+          open={true}
+          title={pendingDecision.approve ? "Pul yechishni tasdiqlash" : "So'rovni rad etish"}
+          description={
+            pendingDecision.approve
+              ? `${fmt(pendingDecision.withdrawal.amount)} miqdoridagi mablag' seller kartasiga (${pendingDecision.withdrawal.bankCardNumber}) to'lab berilganini tasdiqlaysizmi?`
+              : `${fmt(pendingDecision.withdrawal.amount)} miqdoridagi mablag' yechish so'rovini rad etmoqchimisiz? Mablag' seller balansiga qaytariladi.`
+          }
+          confirmLabel={pendingDecision.approve ? "Ha, tasdiqlash" : "Ha, rad etish"}
+          onConfirm={() =>
+            processMutation.mutate({
+              id: pendingDecision.withdrawal.id,
+              approve: pendingDecision.approve,
+              adminNote: note[pendingDecision.withdrawal.id],
+            })
+          }
+          onCancel={() => setPendingDecision(null)}
+        />
+      )}
     </div>
   );
 }
