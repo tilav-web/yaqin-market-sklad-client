@@ -139,7 +139,7 @@ function EconomicsPanel({ commissionDraft }: { commissionDraft: string | undefin
 
 function DidoxTestCard({ didoxKey }: { didoxKey?: string }) {
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string; data?: any } | null>(null);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string; data?: unknown } | null>(null);
 
   const runTest = async () => {
     setTesting(true);
