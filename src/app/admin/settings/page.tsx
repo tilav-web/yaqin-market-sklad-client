@@ -201,7 +201,7 @@ function DidoxTestCard({ didoxKey }: { didoxKey?: string }) {
           testResult.success ? 'bg-emerald-100/60 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200' : 'bg-destructive/10 text-destructive'
         }`}>
           <p className="font-semibold">{testResult.message}</p>
-          {testResult.data && (
+          {Boolean(testResult.data) && (
             <pre className="mt-1 max-h-32 overflow-auto text-[11px] opacity-80">
               {JSON.stringify(testResult.data, null, 2)}
             </pre>
