@@ -18,7 +18,13 @@ interface SellerApplication {
   lastName: string;
   contactPhone: string | null;
   stir: string | null;
+  companyName: string | null;
   entityType: string | null;
+  legalAddress: string | null;
+  bankCardNumber: string | null;
+  bankCardHolderName: string | null;
+  soliqConfirmed: boolean;
+  ofertaAccepted: boolean;
   note: string | null;
   status: 'pending' | 'approved' | 'rejected';
   rejectionReason: string | null;
@@ -67,27 +73,30 @@ const STATUS: Record<SellerApplication['status'], { label: string; variant: 'war
 
 const APPROVE_FIELDS: { k: keyof ApproveForm; label: string; required?: boolean; type?: string }[] = [
   { k: 'fullName', label: 'To\'liq ism (FIO)', required: true },
-  { k: 'passportOrPinfl', label: 'Pasport / PINFL', required: true },
-  { k: 'stir', label: 'STIR / INN', required: true },
-  { k: 'entityType', label: 'Yuridik shakl (YaTT / MChJ / AJ)', required: true },
-  { k: 'bankCardNumber', label: 'Karta raqami (16 raqam)' },
-  { k: 'bankCardHolderName', label: 'Karta egasi' },
-  { k: 'contractNumber', label: 'Shartnoma raqami' },
-  { k: 'contractDate', label: 'Shartnoma sanasi', type: 'date' },
-  { k: 'adminNotes', label: 'Admin izohi (ichki)' },
+  { k: 'passportOrPinfl', label: 'Pasport / PINFL', required: false },
+  { k: 'stir', label: 'STIR / INN', required: false },
+  { k: 'entityType', label: 'Yuridik shakl (YaTT / MChJ)', required: false },
+  { k: 'bankCardNumber', label: 'Karta raqami (Uzcard/Humo)', required: false },
+  { k: 'bankCardHolderName', label: 'Karta egasi', required: false },
+  { k: 'contractNumber', label: 'Shartnoma raqami', required: false },
+  { k: 'contractDate', label: 'Shartnoma sanasi', type: 'date', required: false },
+  { k: 'adminNotes', label: 'Admin izohi', required: false },
 ];
 
 export default function ApplicationsPage() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<Filter>('pending');
-  const [rejectingId, setRejectingId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
-  const [rejectErr, setRejectErr] = useState('');
   const [approvingApp, setApprovingApp] = useState<SellerApplication | null>(null);
   const [approveForm, setApproveForm] = useState<ApproveForm>(EMPTY_APPROVE);
   const [approveErr, setApproveErr] = useState('');
-  useEscapeKey(!!rejectingId, () => { setRejectingId(null); setRejectReason(''); setRejectErr(''); });
-  useEscapeKey(!!approvingApp, () => { setApprovingApp(null); setApproveErr(''); });
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectErr, setRejectErr] = useState('');
+
+  useEscapeKey(!!approvingApp || !!rejectingId, () => {
+    if (approvingApp) setApprovingApp(null);
+    if (rejectingId) setRejectingId(null);
+  });
 
   const appsQuery = useQuery({
     queryKey: ['admin', 'applications'],
@@ -97,36 +106,35 @@ export default function ApplicationsPage() {
     },
   });
 
-  const all = useMemo(() => appsQuery.data ?? [], [appsQuery.data]);
+  const apps = appsQuery.data ?? [];
+
   const counts = useMemo(
     () => ({
-      pending: all.filter((a) => a.status === 'pending').length,
-      approved: all.filter((a) => a.status === 'approved').length,
-      rejected: all.filter((a) => a.status === 'rejected').length,
+      pending: apps.filter((a) => a.status === 'pending').length,
+      approved: apps.filter((a) => a.status === 'approved').length,
+      rejected: apps.filter((a) => a.status === 'rejected').length,
     }),
-    [all],
+    [apps],
   );
-  const list = filter === 'all' ? all : all.filter((a) => a.status === filter);
 
-  const approve = useMutation({
-    mutationFn: async ({ id, form }: { id: string; form: ApproveForm }) => {
-      const body: Record<string, string> = {};
-      (Object.keys(form) as (keyof ApproveForm)[]).forEach((k) => {
-        if (form[k]) body[k] = form[k];
-      });
+  const list = useMemo(() => {
+    if (filter === 'all') return apps;
+    return apps.filter((a) => a.status === filter);
+  }, [apps, filter]);
+
+  const approveMutation = useMutation({
+    mutationFn: async ({ id, body }: { id: string; body: Partial<ApproveForm> }) => {
       await api.post(`/sellers/admin/applications/${id}/approve`, body);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'applications'] });
       setApprovingApp(null);
-      setApproveForm(EMPTY_APPROVE);
-      setApproveErr('');
-      toast.success('Seller tasdiqlandi');
+      qc.invalidateQueries({ queryKey: ['admin', 'applications'] });
+      toast.success('Do\'kon arizasi tasdiqlandi');
     },
     onError: (e: unknown) => setApproveErr(extractErrorMessage(e)),
   });
 
-  const reject = useMutation({
+  const rejectMutation = useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
       await api.post(`/sellers/admin/applications/${id}/reject`, { reason });
     },
@@ -141,13 +149,13 @@ export default function ApplicationsPage() {
   });
 
   const openApproveDialog = (app: SellerApplication) => {
-    // Arizada kelgan soliq rekvizitlari formani oldindan to'ldiradi —
-    // admin faqat tekshiradi/to'g'rilaydi.
     setApproveForm({
       ...EMPTY_APPROVE,
       fullName: `${app.firstName} ${app.lastName}`.trim(),
       stir: app.stir ?? '',
       entityType: app.entityType ?? '',
+      bankCardNumber: app.bankCardNumber ?? '',
+      bankCardHolderName: app.bankCardHolderName ?? '',
     });
     setApproveErr('');
     setApprovingApp(app);
@@ -206,29 +214,52 @@ export default function ApplicationsPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate text-base font-bold text-foreground">
-                          {app.firstName} {app.lastName}
+                          {app.companyName || `${app.firstName} ${app.lastName}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Mas'ul: {app.firstName} {app.lastName}
                         </p>
                         {app.contactPhone && (
-                          <p className="mt-0.5 text-sm text-muted-foreground">
-                            Qo'shimcha tel: {app.contactPhone}
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Tel: {app.contactPhone}
                           </p>
                         )}
                       </div>
                       <Badge variant={st.variant}>{st.label}</Badge>
                     </div>
 
-                    <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
                       <User className="size-4 text-primary" />
                       <span className="text-foreground">{app.user.name ?? '—'}</span>
                       <span>· {app.user.phone}</span>
                     </div>
 
-                    {(app.stir || app.entityType) && (
-                      <p className="mt-1.5 text-sm text-muted-foreground">
-                        {app.entityType && <span className="mr-2">Yuridik shakl: <span className="text-foreground">{app.entityType}</span></span>}
-                        {app.stir && <span>STIR: <span className="font-mono text-foreground">{app.stir}</span></span>}
-                      </p>
-                    )}
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      {app.stir && (
+                        <span className="rounded-md bg-muted px-2 py-1">
+                          STIR: <strong className="font-mono">{app.stir}</strong>
+                        </span>
+                      )}
+                      {app.entityType && (
+                        <span className="rounded-md bg-muted px-2 py-1">
+                          Shakl: <strong>{app.entityType}</strong>
+                        </span>
+                      )}
+                      {app.bankCardNumber && (
+                        <span className="rounded-md bg-muted px-2 py-1 font-mono">
+                          💳 {app.bankCardNumber}
+                        </span>
+                      )}
+                      {app.soliqConfirmed ? (
+                        <span className="rounded-md bg-emerald-50 text-emerald-700 font-semibold px-2 py-1 border border-emerald-200">
+                          ✅ Soliqda biriktirilgan
+                        </span>
+                      ) : (
+                        <span className="rounded-md bg-amber-50 text-amber-700 px-2 py-1 border border-amber-200">
+                          ⏳ Soliq kutilmoqda
+                        </span>
+                      )}
+                    </div>
 
                     {app.note && (
                       <p className="mt-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
@@ -273,10 +304,10 @@ export default function ApplicationsPage() {
       {approvingApp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
           <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto p-6">
-            <h2 className="text-lg font-bold text-foreground">Seller yaratish</h2>
+            <h2 className="text-lg font-bold text-foreground">Do'kon egasi sifatida tasdiqlash</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               <span className="font-medium text-foreground">{approvingApp.firstName} {approvingApp.lastName}</span>
-              {' '}({approvingApp.user.phone}) uchun seller ma'lumotlarini to'ldiring.
+              {' '}({approvingApp.user.phone}) uchun hamkorlik ma'lumotlarini to'ldiring va tasdiqlang.
             </p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -316,8 +347,8 @@ export default function ApplicationsPage() {
               <Button
                 variant="success"
                 size="sm"
-                disabled={!requiredFilled || approve.isPending}
-                onClick={() => approve.mutate({ id: approvingApp.id, form: approveForm })}>
+                disabled={!requiredFilled || approveMutation.isPending}
+                onClick={() => approveMutation.mutate({ id: approvingApp.id, body: approveForm })}>
                 <Check className="size-4" />
                 Saqlash &amp; Tasdiqlash
               </Button>
@@ -333,11 +364,11 @@ export default function ApplicationsPage() {
             <h2 className="text-lg font-bold text-foreground">Arizani rad etish</h2>
             <p className="mt-1 text-sm text-muted-foreground">Sabab foydalanuvchiga ko'rsatiladi.</p>
             <textarea
+              rows={3}
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Rad etish sababi"
-              rows={3}
-              className="mt-4 w-full rounded-lg border border-input bg-card p-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+              placeholder="Masalan: Soliq kabinetida komissioner biriktirilmagan"
+              className="mt-3 w-full rounded-md border border-border bg-background p-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
             />
             {rejectErr && <p className="mt-2 text-xs text-destructive">{rejectErr}</p>}
             <div className="mt-4 flex justify-end gap-2">
@@ -350,8 +381,9 @@ export default function ApplicationsPage() {
               <Button
                 variant="destructive"
                 size="sm"
-                disabled={!rejectReason || reject.isPending}
-                onClick={() => reject.mutate({ id: rejectingId, reason: rejectReason })}>
+                disabled={!rejectReason.trim() || rejectMutation.isPending}
+                onClick={() => rejectMutation.mutate({ id: rejectingId, reason: rejectReason })}>
+                <X className="size-4" />
                 Rad etish
               </Button>
             </div>
