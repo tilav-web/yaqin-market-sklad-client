@@ -22,6 +22,10 @@ interface SellerProfile {
   vatPayer: boolean;
   komissionerStatus: 'none' | 'pending' | 'confirmed';
   komissionerConfirmedAt: string | null;
+  bankAccountNumber?: string | null;
+  bankMfo?: string | null;
+  bankName?: string | null;
+  bankAccountHolderName?: string | null;
   bankCardNumber: string | null;
   bankCardHolderName: string | null;
   contractNumber: string | null;
@@ -36,6 +40,10 @@ interface ProfileForm {
   stir: string;
   entityType: string;
   vatPayer: boolean;
+  bankAccountNumber: string;
+  bankMfo: string;
+  bankName: string;
+  bankAccountHolderName: string;
   bankCardNumber: string;
   bankCardHolderName: string;
   contractNumber: string;
@@ -48,6 +56,10 @@ const PROFILE_FIELDS: { k: Exclude<keyof ProfileForm, 'vatPayer'>; label: string
   { k: 'passportOrPinfl', label: 'Pasport / PINFL' },
   { k: 'stir', label: 'STIR / INN' },
   { k: 'entityType', label: 'Yuridik shakl' },
+  { k: 'bankAccountNumber', label: 'Bank Hisob Raqami' },
+  { k: 'bankMfo', label: 'Bank MFO' },
+  { k: 'bankName', label: 'Bank nomi' },
+  { k: 'bankAccountHolderName', label: 'Hisob egasi (Tashkilot)' },
   { k: 'bankCardNumber', label: 'Karta raqami' },
   { k: 'bankCardHolderName', label: 'Karta egasi' },
   { k: 'contractNumber', label: 'Shartnoma raqami' },
@@ -61,6 +73,10 @@ function formFromProfile(p: SellerProfile | null): ProfileForm {
     stir: p?.stir ?? '',
     entityType: p?.entityType ?? '',
     vatPayer: p?.vatPayer ?? false,
+    bankAccountNumber: p?.bankAccountNumber ?? '',
+    bankMfo: p?.bankMfo ?? '',
+    bankName: p?.bankName ?? '',
+    bankAccountHolderName: p?.bankAccountHolderName ?? '',
     bankCardNumber: p?.bankCardNumber ?? '',
     bankCardHolderName: p?.bankCardHolderName ?? '',
     contractNumber: p?.contractNumber ?? '',
@@ -198,9 +214,13 @@ function SellerProfilePanel({ userId }: { userId: string }) {
           <p><span className="text-muted-foreground">FIO:</span> {p.fullName || '—'}</p>
           <p><span className="text-muted-foreground">Pasport/PINFL:</span> {p.passportOrPinfl || '—'}</p>
           <p><span className="text-muted-foreground">STIR:</span> {p.stir || '—'}</p>
-          <p><span className="text-muted-foreground">Yuridik shakl:</span> {p.entityType || '—'}</p>
-          <p><span className="text-muted-foreground">Karta:</span> {p.bankCardNumber || '—'}</p>
-          <p><span className="text-muted-foreground">Karta egasi:</span> {p.bankCardHolderName || '—'}</p>
+          <p><span className="text-muted-foreground">Bank hisob raqami:</span> {p.bankAccountNumber || '—'}</p>
+          <p><span className="text-muted-foreground">Bank MFO:</span> {p.bankMfo || '—'}</p>
+          <p><span className="text-muted-foreground">Bank filiali:</span> {p.bankName || '—'}</p>
+          <p><span className="text-muted-foreground">Hisob egasi:</span> {p.bankAccountHolderName || '—'}</p>
+          {p.bankCardNumber && (
+            <p><span className="text-muted-foreground">Karta:</span> {p.bankCardNumber} ({p.bankCardHolderName || '—'})</p>
+          )}
           <p><span className="text-muted-foreground">Shartnoma №:</span> {p.contractNumber || '—'}</p>
           <p><span className="text-muted-foreground">Shartnoma sanasi:</span> {p.contractDate || '—'}</p>
           <p><span className="text-muted-foreground">QQS:</span> {p.vatPayer ? "To'lovchi" : "To'lovchi emas"}</p>

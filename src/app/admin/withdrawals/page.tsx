@@ -2,12 +2,15 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Building2,
   Check,
   CheckCircle2,
   Clock,
   Copy,
   CreditCard,
   Download,
+  Hash,
+  Landmark,
   RefreshCw,
   X,
   XCircle,
@@ -27,8 +30,13 @@ interface Withdrawal {
   id: string;
   sellerId: string;
   amount: string;
-  bankCardNumber: string;
-  bankCardHolderName: string;
+  shopId?: string | null;
+  bankAccountNumber?: string | null;
+  bankMfo?: string | null;
+  bankName?: string | null;
+  recipientName?: string | null;
+  bankCardNumber?: string | null;
+  bankCardHolderName?: string | null;
   status: 'pending' | 'processing' | 'completed' | 'rejected';
   requestedAt: string;
   processedAt: string | null;
@@ -110,9 +118,27 @@ export default function WithdrawalsPage() {
     onError: (e) => setExportErr(extractErrorMessage(e)),
   });
 
+  const copyText = (val: string, label: string) => {
+    navigator.clipboard.writeText(val.replace(/\s+/g, ''));
+    toast.success(`${label} nusxalandi`);
+  };
+
+  const copyB2BDetails = (w: Withdrawal) => {
+    const acc = w.bankAccountNumber || w.bankCardNumber || '';
+    const lines = [
+      `Hisob raqam: ${acc}`,
+      w.bankMfo ? `MFO: ${w.bankMfo}` : null,
+      w.bankName ? `Bank: ${w.bankName}` : null,
+      `Qabul qiluvchi: ${w.recipientName || w.bankCardHolderName || w.seller?.name || 'Seller'}`,
+      `Summa: ${fmt(w.amount)}`,
+    ].filter(Boolean).join('\n');
+    navigator.clipboard.writeText(lines);
+    toast.success('B2B to\'lov rekvizitlari nusxalandi!');
+  };
+
   const copyCardNumber = (cardNum: string) => {
     navigator.clipboard.writeText(cardNum.replace(/\s+/g, ''));
-    toast.success('Karta raqami nusxalandi');
+    toast.success('Raqam nusxalandi');
   };
 
   return (
@@ -231,25 +257,83 @@ export default function WithdrawalsPage() {
                     </span>
                   </div>
 
-                  {/* Bank Card Box */}
-                  <div className="mt-4 rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground font-semibold">Karta raqami:</span>
-                      <button
-                        type="button"
-                        onClick={() => copyCardNumber(w.bankCardNumber)}
-                        className="flex items-center gap-1.5 font-mono font-bold text-foreground bg-card border border-border px-2.5 py-1 rounded-lg hover:border-primary/50 transition-colors">
-                        💳 {w.bankCardNumber}
-                        <Copy className="size-3 text-muted-foreground" />
-                      </button>
-                    </div>
+                  {/* Bank Account / B2B Details Box */}
+                  <div className="mt-4 rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-2.5 text-xs">
+                    {w.bankAccountNumber ? (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground font-semibold">Bank Hisob Raqami:</span>
+                          <button
+                            type="button"
+                            onClick={() => copyText(w.bankAccountNumber!, 'Hisob raqam')}
+                            className="flex items-center gap-1.5 font-mono font-bold text-foreground bg-card border border-border px-2.5 py-1 rounded-lg hover:border-primary/50 transition-colors">
+                            <Hash className="size-3 text-primary" />
+                            {w.bankAccountNumber}
+                            <Copy className="size-3 text-muted-foreground" />
+                          </button>
+                        </div>
 
-                    <div className="flex items-center justify-between text-muted-foreground pt-1 border-t border-border/40">
-                      <span>Karta egasi:</span>
-                      <strong className="text-foreground uppercase font-semibold">
-                        {w.bankCardHolderName}
-                      </strong>
-                    </div>
+                        {w.bankMfo && (
+                          <div className="flex items-center justify-between text-muted-foreground pt-1 border-t border-border/40">
+                            <span>Bank MFO:</span>
+                            <button
+                              type="button"
+                              onClick={() => copyText(w.bankMfo!, 'MFO')}
+                              className="flex items-center gap-1 font-mono font-bold text-foreground hover:text-primary transition-colors">
+                              <Building2 className="size-3 text-muted-foreground" />
+                              {w.bankMfo}
+                              <Copy className="size-2.5 text-muted-foreground" />
+                            </button>
+                          </div>
+                        )}
+
+                        {w.bankName && (
+                          <div className="flex items-center justify-between text-muted-foreground pt-1 border-t border-border/40">
+                            <span>Bank filiali:</span>
+                            <span className="text-foreground font-medium">{w.bankName}</span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between text-muted-foreground pt-1 border-t border-border/40">
+                          <span>Qabul qiluvchi (Tashkilot):</span>
+                          <strong className="text-foreground uppercase font-semibold">
+                            {w.recipientName || w.bankCardHolderName || w.seller?.name || '—'}
+                          </strong>
+                        </div>
+
+                        <div className="pt-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyB2BDetails(w)}
+                            className="w-full h-7 text-[0.7rem] font-bold gap-1 rounded-lg border-primary/30 text-primary hover:bg-primary/10">
+                            <Landmark className="size-3" />
+                            Bank-Klient uchun to'liq nusxalash
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground font-semibold">Karta raqami:</span>
+                          <button
+                            type="button"
+                            onClick={() => copyCardNumber(w.bankCardNumber || '')}
+                            className="flex items-center gap-1.5 font-mono font-bold text-foreground bg-card border border-border px-2.5 py-1 rounded-lg hover:border-primary/50 transition-colors">
+                            💳 {w.bankCardNumber || '—'}
+                            <Copy className="size-3 text-muted-foreground" />
+                          </button>
+                        </div>
+
+                        <div className="flex items-center justify-between text-muted-foreground pt-1 border-t border-border/40">
+                          <span>Karta egasi:</span>
+                          <strong className="text-foreground uppercase font-semibold">
+                            {w.bankCardHolderName || '—'}
+                          </strong>
+                        </div>
+                      </>
+                    )}
 
                     {w.seller?.phone && (
                       <div className="flex items-center justify-between text-muted-foreground pt-1 border-t border-border/40">
@@ -325,7 +409,7 @@ export default function WithdrawalsPage() {
           title={pendingDecision.approve ? "Pul yechishni tasdiqlash" : "So'rovni rad etish"}
           description={
             pendingDecision.approve
-              ? `${fmt(pendingDecision.withdrawal.amount)} miqdoridagi mablag' seller kartasiga (${pendingDecision.withdrawal.bankCardNumber}) to'lab berilganini tasdiqlaysizmi?`
+              ? `${fmt(pendingDecision.withdrawal.amount)} miqdoridagi mablag' seller hisob raqamiga (${pendingDecision.withdrawal.bankAccountNumber || pendingDecision.withdrawal.bankCardNumber}) to'lab berilganini tasdiqlaysizmi?`
               : `${fmt(pendingDecision.withdrawal.amount)} miqdoridagi mablag' yechish so'rovini rad etmoqchimisiz? Mablag' seller balansiga qaytariladi.`
           }
           confirmLabel={pendingDecision.approve ? "Ha, tasdiqlash" : "Ha, rad etish"}

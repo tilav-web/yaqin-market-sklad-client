@@ -9,6 +9,8 @@ import {
   CreditCard,
   FileCheck2,
   FileText,
+  Hash,
+  Landmark,
   MapPin,
   Phone,
   Search,
@@ -36,6 +38,10 @@ interface SellerApplication {
   companyName: string | null;
   entityType: string | null;
   legalAddress: string | null;
+  bankAccountNumber?: string | null;
+  bankMfo?: string | null;
+  bankName?: string | null;
+  bankAccountHolderName?: string | null;
   bankCardNumber: string | null;
   bankCardHolderName: string | null;
   soliqConfirmed: boolean;
@@ -52,6 +58,10 @@ interface ApproveForm {
   passportOrPinfl: string;
   stir: string;
   entityType: string;
+  bankAccountNumber: string;
+  bankMfo: string;
+  bankName: string;
+  bankAccountHolderName: string;
   bankCardNumber: string;
   bankCardHolderName: string;
   contractNumber: string;
@@ -64,6 +74,10 @@ const EMPTY_APPROVE: ApproveForm = {
   passportOrPinfl: '',
   stir: '',
   entityType: '',
+  bankAccountNumber: '',
+  bankMfo: '',
+  bankName: '',
+  bankAccountHolderName: '',
   bankCardNumber: '',
   bankCardHolderName: '',
   contractNumber: '',
@@ -182,6 +196,10 @@ export default function ApplicationsPage() {
       fullName: `${app.firstName} ${app.lastName}`.trim(),
       stir: app.stir ?? '',
       entityType: app.entityType ?? '',
+      bankAccountNumber: app.bankAccountNumber ?? '',
+      bankMfo: app.bankMfo ?? '',
+      bankName: app.bankName ?? '',
+      bankAccountHolderName: app.bankAccountHolderName ?? app.companyName ?? `${app.firstName} ${app.lastName}`.trim(),
       bankCardNumber: app.bankCardNumber ?? '',
       bankCardHolderName: app.bankCardHolderName ?? '',
     });
@@ -408,7 +426,16 @@ export default function ApplicationsPage() {
                       </div>
                     )}
 
-                    {app.bankCardNumber && (
+                    {app.bankAccountNumber ? (
+                      <div className="flex items-center justify-between text-muted-foreground pt-1 border-t border-border/40">
+                        <span className="flex items-center gap-1.5">
+                          <Landmark className="size-3.5 text-primary" /> Bank hisob raqami:
+                        </span>
+                        <span className="text-foreground font-mono font-bold">
+                          🏦 {app.bankAccountNumber} {app.bankMfo && `(MFO: ${app.bankMfo})`}
+                        </span>
+                      </div>
+                    ) : app.bankCardNumber ? (
                       <div className="flex items-center justify-between text-muted-foreground pt-1 border-t border-border/40">
                         <span className="flex items-center gap-1.5">
                           <CreditCard className="size-3.5 text-primary" /> Bank kartasi:
@@ -418,7 +445,7 @@ export default function ApplicationsPage() {
                           {app.bankCardHolderName && `(${app.bankCardHolderName})`}
                         </span>
                       </div>
-                    )}
+                    ) : null}
 
                     {app.rejectionReason && (
                       <div className="rounded-lg bg-destructive/10 p-2 text-destructive font-medium mt-2">
@@ -525,23 +552,52 @@ export default function ApplicationsPage() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Bank Kartasi
+                    Bank Hisob Raqami (20 xonali)
                   </label>
                   <input
                     type="text"
-                    value={approveForm.bankCardNumber}
-                    onChange={(e) => setApproveForm({ ...approveForm, bankCardNumber: e.target.value })}
-                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-primary"
+                    value={approveForm.bankAccountNumber}
+                    onChange={(e) => setApproveForm({ ...approveForm, bankAccountNumber: e.target.value })}
+                    placeholder="20208..."
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-mono font-bold outline-none focus:border-primary"
                   />
                 </div>
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Karta Egasi
+                    Bank MFO
                   </label>
                   <input
                     type="text"
-                    value={approveForm.bankCardHolderName}
-                    onChange={(e) => setApproveForm({ ...approveForm, bankCardHolderName: e.target.value })}
+                    value={approveForm.bankMfo}
+                    onChange={(e) => setApproveForm({ ...approveForm, bankMfo: e.target.value })}
+                    placeholder="00444"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Bank Nomi
+                  </label>
+                  <input
+                    type="text"
+                    value={approveForm.bankName}
+                    onChange={(e) => setApproveForm({ ...approveForm, bankName: e.target.value })}
+                    placeholder="Masalan: AT Xalq Banki"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Hisob Egasi (Tashkilot)
+                  </label>
+                  <input
+                    type="text"
+                    value={approveForm.bankAccountHolderName}
+                    onChange={(e) => setApproveForm({ ...approveForm, bankAccountHolderName: e.target.value })}
+                    placeholder='Masalan: "TILAV" MCHJ'
                     className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold outline-none focus:border-primary"
                   />
                 </div>
