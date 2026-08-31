@@ -9,7 +9,6 @@ import {
   CreditCard,
   FileCheck2,
   FileText,
-  Hash,
   Landmark,
   MapPin,
   Phone,

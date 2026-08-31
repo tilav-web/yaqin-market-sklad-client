@@ -309,7 +309,7 @@ export default function WithdrawalsPage() {
                             onClick={() => copyB2BDetails(w)}
                             className="w-full h-7 text-[0.7rem] font-bold gap-1 rounded-lg border-primary/30 text-primary hover:bg-primary/10">
                             <Landmark className="size-3" />
-                            Bank-Klient uchun to'liq nusxalash
+                            Bank-Klient uchun to&apos;liq nusxalash
                           </Button>
                         </div>
                       </>

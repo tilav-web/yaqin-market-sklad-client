@@ -2,6 +2,7 @@
 
 import { useMutation } from '@tanstack/react-query';
 import { Eye, EyeOff, KeyRound, Lock, Phone, ShieldCheck, User } from 'lucide-react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -134,11 +135,12 @@ export default function LoginPage() {
       <Card className="relative w-full max-w-md p-8 bg-card/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl">
         {/* Brand Logo & Header */}
         <div className="mb-6 flex items-center gap-3.5">
-          <div className="size-12 rounded-2xl overflow-hidden shadow-lg border border-primary/20 bg-card p-1.5 flex items-center justify-center">
-            <img
+          <div className="size-12 rounded-2xl overflow-hidden shadow-lg border border-primary/20 bg-card p-1.5 flex items-center justify-center relative">
+            <Image
               src="/logo.png"
               alt="Yaqin Market"
-              className="size-full object-contain"
+              fill
+              className="object-contain p-1.5"
             />
           </div>
           <div>
