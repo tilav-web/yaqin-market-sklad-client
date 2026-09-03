@@ -163,7 +163,7 @@ export const ADMIN_PAGES: CommandItem[] = [
     description: 'OFD, Soliq (DSQ) cheklari va fiskal integratsiya',
     href: '/admin/fiscal',
     icon: ReceiptText,
-    keywords: ['soliq', 'ofd', 'chek', 'dsq', 'fiskal', 'didox'],
+    keywords: ['soliq', 'ofd', 'chek', 'dsq', 'fiskal', 'e-imzo', 'eri'],
   },
 
   // 4. Mijozlar & Qo'llab-quvvatlash
@@ -254,10 +254,10 @@ export const ADMIN_PAGES: CommandItem[] = [
     id: 'settings',
     title: 'Tizim sozlamalari',
     category: 'Xavfsizlik & Tizim',
-    description: 'Komissiya stavkasi, Didox/Soliq API kalitlari va parametrlar',
+    description: 'Komissiya stavkasi, E-IMZO/Soliq kalitlari va parametrlar',
     href: '/admin/settings',
     icon: Settings,
-    keywords: ['sozlama', 'didox', 'komissiya', 'token', 'kalit'],
+    keywords: ['sozlama', 'soliq', 'e-imzo', 'eri', 'komissiya', 'token', 'kalit'],
   },
 ];
 

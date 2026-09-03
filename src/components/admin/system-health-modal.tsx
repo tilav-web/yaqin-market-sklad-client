@@ -21,7 +21,7 @@ import { useEscapeKey } from '@/lib/use-escape-key';
 
 interface HealthStatus {
   database: boolean;
-  didoxConfigured: boolean;
+  soliqConfigured: boolean;
   operatorStirConfigured: boolean;
   fiscalMode: string;
   clickConfigured: boolean;
@@ -51,14 +51,19 @@ export function SystemHealthModal({
       ]);
 
       const settings = settingsRes.status === 'fulfilled' ? settingsRes.value.data : [];
-      const didoxKey = settings.find((s) => s.key === 'didox_user_key')?.value;
-      const stir = settings.find((s) => s.key === 'platform_stir')?.value;
+      const soliqKey =
+        settings.find((s) => s.key === 'soliq_key_path')?.value ||
+        settings.find((s) => s.key === 'soliq_auth_token')?.value ||
+        settings.find((s) => s.key === 'didox_user_key')?.value;
+      const stir =
+        settings.find((s) => s.key === 'soliq_operator_tin')?.value ||
+        settings.find((s) => s.key === 'platform_stir')?.value;
       const fiscal = settings.find((s) => s.key === 'fiscal_mode')?.value || 'off';
       const clickFee = settings.find((s) => s.key === 'click_fee_percent')?.value;
 
       return {
         database: settingsRes.status === 'fulfilled',
-        didoxConfigured: Boolean(didoxKey && didoxKey.trim() !== ''),
+        soliqConfigured: Boolean(soliqKey && soliqKey.trim() !== ''),
         operatorStirConfigured: Boolean(stir && stir.trim() !== ''),
         fiscalMode: fiscal,
         clickConfigured: Boolean(clickFee && Number(clickFee) > 0),
@@ -76,7 +81,7 @@ export function SystemHealthModal({
   const h = healthQ.data;
   const isAllReady =
     h?.database &&
-    h?.didoxConfigured &&
+    h?.soliqConfigured &&
     h?.operatorStirConfigured &&
     h?.pendingAppsCount === 0 &&
     h?.pendingPayoutsCount === 0;
@@ -169,18 +174,18 @@ export function SystemHealthModal({
                   </span>
                 </div>
 
-                {/* Didox / Soliq */}
+                {/* Davlat Soliq & E-IMZO */}
                 <div className="flex items-center justify-between rounded-xl border border-border/80 bg-muted/20 p-3">
                   <div className="flex items-center gap-2.5">
                     <KeyRound className="size-4 text-primary" />
                     <div>
-                      <span className="font-bold text-foreground">Davlat Soliq (Didox) API</span>
+                      <span className="font-bold text-foreground">Davlat Soliq & E-IMZO (ERI)</span>
                       <p className="text-[0.68rem] text-muted-foreground">
-                        {h.didoxConfigured ? 'Kalit kiritilgan va faol' : 'Kalit kiritilmagan (Chala)'}
+                        {h.soliqConfigured ? 'E-IMZO kaliti / Token sozlangan' : 'Kalit yuklanmagan (Chala)'}
                       </p>
                     </div>
                   </div>
-                  {h.didoxConfigured ? (
+                  {h.soliqConfigured ? (
                     <span className="inline-flex items-center gap-1 text-[0.68rem] font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
                       <Check className="size-3" /> Ulangan
                     </span>

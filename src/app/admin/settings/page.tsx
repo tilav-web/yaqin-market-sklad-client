@@ -23,7 +23,6 @@ import {
   RefreshCw,
   Save,
   Search,
-  Server,
   ShieldAlert,
   ShieldCheck,
   Smartphone,
@@ -32,6 +31,7 @@ import {
   Timer,
   TrendingUp,
   TriangleAlert,
+  Upload,
   Zap,
 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
@@ -166,20 +166,34 @@ const SETTINGS_METADATA: Record<string, SettingMeta> = {
     icon: Building2,
     hint: "Operator korxonasining 9 xonali davlat soliq identifikatsiya raqami (313296455).",
   },
-  didox_user_key: {
+  soliq_operator_tin: {
     tab: 'legal',
-    category: 'Davlat Soliq & Didox Integratsiyasi',
-    label: 'Didox API kaliti (user-key)',
+    category: 'Davlat Soliq & E-IMZO Integratsiyasi',
+    label: 'Operator MChJ STIRi',
+    icon: Building2,
+    hint: "Platforma egasi bo'lgan korxona STIRi (masalan: 313296455).",
+  },
+  soliq_auth_token: {
+    tab: 'legal',
+    category: 'Davlat Soliq & E-IMZO Integratsiyasi',
+    label: 'Soliq API Sessiya Tokeni (Bearer)',
     isSecret: true,
     icon: KeyRound,
-    hint: "Didox shaxsiy kabinetidan olingan API kaliti. Yangi sellerlar STIR ma'lumotlarini Soliq bazasidan avtomatik tekshirish uchun xizmat qiladi.",
+    hint: "Soliq portalidagi faol sessiya/avtorizatsiya tokeni. E-IMZO orqali olinadi yoki qo'lda kiritiladi.",
   },
-  didox_api_url: {
+  soliq_token_expires_at: {
     tab: 'legal',
-    category: 'Davlat Soliq & Didox Integratsiyasi',
-    label: 'Didox API server manzili',
-    icon: Server,
-    hint: "Standart qiymat: https://api.didox.uz",
+    category: 'Davlat Soliq & E-IMZO Integratsiyasi',
+    label: 'Soliq tokeni amal qilish muddati',
+    icon: Clock,
+    hint: "Joriy Soliq sessiya tokenining tugash vaqti (ISO timestamp).",
+  },
+  soliq_key_path: {
+    tab: 'legal',
+    category: 'Davlat Soliq & E-IMZO Integratsiyasi',
+    label: 'E-IMZO (.pfx) kalit fayli yo\'li',
+    icon: FileCode,
+    hint: "Serverda saqlangan rasmiy E-IMZO kalit konteyneri joylashuvi.",
   },
 
   // ── 3. Fiscal & Cheklar ──
@@ -514,7 +528,28 @@ function EconomicsCalculator({
   );
 }
 
-function DidoxConnectionTester({ didoxKey }: { didoxKey?: string }) {
+interface SoliqStatus {
+  hasKey: boolean;
+  keyPath: string;
+  keyFileName: string;
+  keyFileSize: number;
+  hasPassword: boolean;
+  hasToken: boolean;
+  isTokenExpired: boolean;
+  tokenExpiresAt: string;
+  operatorTin: string;
+  tokenPreview: string;
+}
+
+function SoliqEimzoManager() {
+  const qc = useQueryClient();
+  const [file, setFile] = useState<File | null>(null);
+  const [password, setPassword] = useState('');
+  const [operatorTin, setOperatorTin] = useState('313296455');
+  const [manualToken, setManualToken] = useState('');
+  const [testTin, setTestTin] = useState('313296455');
+  const [uploading, setUploading] = useState(false);
+  const [savingToken, setSavingToken] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{
     success: boolean;
@@ -522,12 +557,70 @@ function DidoxConnectionTester({ didoxKey }: { didoxKey?: string }) {
     data?: unknown;
   } | null>(null);
 
+  const { data: status, refetch: refetchStatus } = useQuery<SoliqStatus>({
+    queryKey: ['admin', 'soliq', 'status'],
+    queryFn: async () => (await api.get('/admin/settings/soliq/status')).data,
+  });
+
+  const handleUploadKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) {
+      toast.error('Iltimos, E-IMZO (.pfx / .p12) kalit faylini tanlang');
+      return;
+    }
+    if (!password) {
+      toast.error('Kalit parolini kiriting');
+      return;
+    }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('password', password);
+      if (operatorTin) formData.append('operatorTin', operatorTin);
+
+      const res = await api.post('/admin/settings/soliq/upload-key', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success(res.data.message || 'Kalit muvaffaqiyatli yuklandi');
+      setFile(null);
+      setPassword('');
+      refetchStatus();
+      qc.invalidateQueries({ queryKey: ['admin', 'settings'] });
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSaveToken = async () => {
+    if (!manualToken.trim()) {
+      toast.error("Token bo'sh bo'lishi mumkin emas");
+      return;
+    }
+    setSavingToken(true);
+    try {
+      const res = await api.post('/admin/settings/soliq/set-token', {
+        token: manualToken,
+      });
+      toast.success(res.data.message || 'Token saqlandi');
+      setManualToken('');
+      refetchStatus();
+      qc.invalidateQueries({ queryKey: ['admin', 'settings'] });
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setSavingToken(false);
+    }
+  };
+
   const runTest = async () => {
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await api.get('/admin/settings/test-didox', {
-        params: didoxKey ? { key: didoxKey } : {},
+      const res = await api.get('/admin/settings/soliq/test', {
+        params: { tin: testTin },
       });
       setTestResult(res.data);
       if (res.data.success) {
@@ -544,76 +637,225 @@ function DidoxConnectionTester({ didoxKey }: { didoxKey?: string }) {
     }
   };
 
-  const isConfigured = Boolean(didoxKey && didoxKey.trim() !== '');
-
   return (
-    <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <ShieldCheck className="size-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="text-sm font-bold text-foreground">
-                Davlat Soliq & Didox Jonli Tekshiruv
-              </h4>
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.68rem] font-bold border',
-                  isConfigured
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                    : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-                )}>
-                {isConfigured ? (
-                  <CheckCircle2 className="size-3" />
-                ) : (
-                  <KeyRound className="size-3" />
-                )}
-                {isConfigured ? 'Kalit kiritilgan' : 'Kalit kiritilmagan'}
-              </span>
+    <div className="space-y-4">
+      {/* 1. Status Overview Card */}
+      <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <ShieldCheck className="size-6" />
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Yangi sotuvchilar ro&apos;yxatdan o&apos;tayotganda Davlat Soliq Qo&apos;mitasi
-              (DSQ) bazasidan ma&apos;lumotlarni avtomatik tortish shlyuzi
-            </p>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="text-sm font-bold text-foreground">
+                  Davlat Soliq & E-IMZO (ERI) Integratsiyasi
+                </h4>
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.68rem] font-bold border',
+                    status?.hasKey
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                      : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+                  )}>
+                  {status?.hasKey ? (
+                    <CheckCircle2 className="size-3" />
+                  ) : (
+                    <AlertTriangle className="size-3" />
+                  )}
+                  {status?.hasKey
+                    ? `Kalit yuklangan (${status.keyFileName})`
+                    : 'Kalit (.pfx) yuklanmagan'}
+                </span>
+
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.68rem] font-bold border',
+                    status?.hasToken && !status?.isTokenExpired
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                      : 'bg-muted text-muted-foreground border-border',
+                  )}>
+                  <Clock className="size-3" />
+                  {status?.hasToken && !status?.isTokenExpired
+                    ? 'Soliq Tokeni Faol'
+                    : 'Token kiritilmagan'}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Yangi sotuvchilar STIR kiritganda Davlat Soliq bazasidan
+                ma&apos;lumotlarni Didox vositachisisiz, to&apos;g&apos;ridan-to&apos;g&apos;ri
+                MChJ E-IMZO kaliti orqali bepul tekshirish tizimi.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <input
+              type="text"
+              value={testTin}
+              onChange={(e) => setTestTin(e.target.value)}
+              placeholder="STIR (313296455)"
+              className="h-9 w-32 rounded-xl border border-border bg-background px-2.5 text-xs font-mono font-medium outline-none focus:border-primary/50"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={testing}
+              onClick={runTest}
+              className="h-9 gap-1.5 rounded-xl border-border px-3 text-xs font-semibold">
+              <RefreshCw
+                className={cn('size-3.5', testing && 'animate-spin')}
+              />
+              Ulanishni tekshirish
+            </Button>
           </div>
         </div>
 
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={testing}
-          onClick={runTest}
-          className="h-9 gap-1.5 rounded-xl border-border px-3 text-xs font-semibold shrink-0">
-          <RefreshCw className={cn('size-3.5', testing && 'animate-spin')} />
-          Ulanishni tekshirish
-        </Button>
+        {/* Test Result Display */}
+        {testResult && (
+          <div
+            className={cn(
+              'mt-4 rounded-xl p-3 text-xs border transition-all',
+              testResult.success
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-900 dark:text-emerald-200'
+                : 'bg-destructive/10 border-destructive/20 text-destructive',
+            )}>
+            <p className="font-bold flex items-center gap-1.5">
+              {testResult.success ? (
+                <Check className="size-4 text-emerald-600" />
+              ) : (
+                <AlertTriangle className="size-4" />
+              )}
+              {testResult.message}
+            </p>
+            {Boolean(testResult.data) && (
+              <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-black/20 p-2.5 text-[11px] font-mono opacity-90 custom-scrollbar">
+                {JSON.stringify(testResult.data, null, 2)}
+              </pre>
+            )}
+          </div>
+        )}
       </div>
 
-      {testResult && (
-        <div
-          className={cn(
-            'mt-4 rounded-xl p-3 text-xs border',
-            testResult.success
-              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-900 dark:text-emerald-200'
-              : 'bg-destructive/10 border-destructive/20 text-destructive',
-          )}>
-          <p className="font-bold flex items-center gap-1.5">
-            {testResult.success ? (
-              <Check className="size-4 text-emerald-600" />
-            ) : (
-              <AlertTriangle className="size-4" />
-            )}
-            {testResult.message}
-          </p>
-          {Boolean(testResult.data) && (
-            <pre className="mt-2 max-h-36 overflow-auto rounded-lg bg-black/20 p-2.5 text-[11px] font-mono opacity-90 custom-scrollbar">
-              {JSON.stringify(testResult.data, null, 2)}
-            </pre>
-          )}
+      {/* 2. Key Upload and Token Management Grid */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Form A: Upload .pfx Key and Password */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <FileCode className="size-4 text-primary" />
+              <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">
+                1. MChJ E-IMZO (.pfx / .p12) Kalitini Yuklash
+              </h5>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Operator MChJ nomidagi E-IMZO kalit faylini va parolini kiriting.
+              Fayl serverda xavfsiz saqlanadi, paroli esa AES-256 bilan
+              shifrlanadi.
+            </p>
+
+            <form onSubmit={handleUploadKey} className="mt-4 space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                  Kalit Fayli (.pfx / .p12)
+                </label>
+                <input
+                  type="file"
+                  accept=".pfx,.p12"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-primary hover:file:bg-primary/20"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                    Kalit Paroli
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Kalit paroli..."
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                    Operator STIRi
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="313296455"
+                    value={operatorTin}
+                    onChange={(e) => setOperatorTin(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-primary/50"
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                size="sm"
+                disabled={uploading || !file || !password}
+                className="w-full h-9 rounded-xl gap-1.5 text-xs font-semibold">
+                <Upload className="size-3.5" />
+                {uploading ? 'Yuklanmoqda...' : 'Kalit va Parolni Saqlash'}
+              </Button>
+            </form>
+          </div>
         </div>
-      )}
+
+        {/* Form B: Update Soliq Session Token */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <KeyRound className="size-4 text-primary" />
+              <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">
+                2. Soliq Sessiya Tokeni (Bearer Token)
+              </h5>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Soliq portalidan olingan faol Bearer tokenni bu yerga kiritishingiz
+              mumkin. Token har safar sotuvchilar STIR ma&apos;lumotlarini
+              tortishda avtorizatsiya uchun ishlatiladi.
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                  Soliq Bearer Token
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  value={manualToken}
+                  onChange={(e) => setManualToken(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-background p-2.5 text-xs font-mono outline-none focus:border-primary/50 custom-scrollbar resize-none"
+                />
+              </div>
+
+              {status?.hasToken && (
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground bg-muted/40 rounded-xl px-3 py-1.5">
+                  <span>Joriy token: {status.tokenPreview}</span>
+                  <span>Muddati: {status.tokenExpiresAt?.slice(0, 10) || 'Faol'}</span>
+                </div>
+              )}
+
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={savingToken || !manualToken.trim()}
+                onClick={handleSaveToken}
+                className="w-full h-9 rounded-xl gap-1.5 text-xs font-semibold">
+                <Save className="size-3.5" />
+                {savingToken ? 'Saqlanmoqda...' : 'Tokenni Yangilash'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -680,10 +922,6 @@ export default function SettingsPage() {
     });
   }, [settingsList, activeTab, searchQuery]);
 
-  const didoxKeyVal =
-    editing.didox_user_key ??
-    settingsList.find((s) => s.key === 'didox_user_key')?.value;
-
   if (isLoading) {
     return (
       <div className="flex h-96 flex-col items-center justify-center gap-3">
@@ -715,7 +953,7 @@ export default function SettingsPage() {
     },
     {
       id: 'legal',
-      label: 'Yuridik & Soliq (Didox)',
+      label: 'Yuridik & Soliq (E-IMZO)',
       icon: Building2,
       count: settingsList.filter((s) => SETTINGS_METADATA[s.key]?.tab === 'legal').length,
     },
@@ -744,7 +982,7 @@ export default function SettingsPage() {
       {/* Page Header */}
       <PageHeader
         title="Tizim Sozlamalari"
-        description="Platforma komissiyalari, soliq va Didox integratsiyasi, fiskallash va xavfsizlik chegaralari"
+        description="Platforma komissiyalari, soliq va E-IMZO integratsiyasi, fiskallash va xavfsizlik chegaralari"
         breadcrumbs={[{ label: 'Sozlamalar' }]}
         actions={
           <div className="flex items-center gap-2">
@@ -804,7 +1042,7 @@ export default function SettingsPage() {
       )}
 
       {activeTab === 'legal' && !searchQuery && (
-        <DidoxConnectionTester didoxKey={didoxKeyVal} />
+        <SoliqEimzoManager />
       )}
 
       {/* Settings Grid Cards */}

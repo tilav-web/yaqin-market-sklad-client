@@ -50,7 +50,7 @@ export function QuickActionsMenu() {
     },
     {
       title: 'Tizim sozlamalari',
-      desc: 'Didox tokeni va komissiya foizlari',
+      desc: 'Soliq / E-IMZO va komissiya foizlari',
       href: '/admin/settings',
       icon: Settings,
       color: 'text-rose-500 bg-rose-500/10',

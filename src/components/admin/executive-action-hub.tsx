@@ -17,7 +17,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 
 interface ActionHubData {
-  didoxConfigured: boolean;
+  soliqConfigured: boolean;
   operatorStirConfigured: boolean;
   pendingAppsCount: number;
   pendingPayoutsCount: number;
@@ -38,11 +38,16 @@ export function ExecutiveActionHub() {
       ]);
 
       const settings = settingsRes.status === 'fulfilled' ? settingsRes.value.data : [];
-      const didoxKey = settings.find((s) => s.key === 'didox_user_key')?.value;
-      const stir = settings.find((s) => s.key === 'platform_stir')?.value;
+      const soliqKey =
+        settings.find((s) => s.key === 'soliq_key_path')?.value ||
+        settings.find((s) => s.key === 'soliq_auth_token')?.value ||
+        settings.find((s) => s.key === 'didox_user_key')?.value;
+      const stir =
+        settings.find((s) => s.key === 'soliq_operator_tin')?.value ||
+        settings.find((s) => s.key === 'platform_stir')?.value;
 
       return {
-        didoxConfigured: Boolean(didoxKey && didoxKey.trim() !== ''),
+        soliqConfigured: Boolean(soliqKey && soliqKey.trim() !== ''),
         operatorStirConfigured: Boolean(stir && stir.trim() !== ''),
         pendingAppsCount: appsRes.status === 'fulfilled' ? appsRes.value.data.total : 0,
         pendingPayoutsCount: payoutsRes.status === 'fulfilled' ? payoutsRes.value.data.total : 0,
@@ -72,17 +77,17 @@ export function ExecutiveActionHub() {
     badge: string;
   }> = [];
 
-  // 1. Missing Didox Key Check
-  if (!hub.didoxConfigured) {
+  // 1. Missing Soliq E-IMZO Key Check
+  if (!hub.soliqConfigured) {
     items.push({
-      id: 'didox_missing',
-      title: 'Didox API kaliti kiritilmagan',
-      description: 'Yangi sellerlarning STIR ma\'lumotlarini Davlat Soliq bazasidan avtomatik tekshirish to\'xtab qolgan.',
+      id: 'soliq_eimzo_missing',
+      title: 'E-IMZO kaliti yuklanmagan',
+      description: 'Yangi sellerlarning STIR ma\'lumotlarini Davlat Soliq bazasidan avtomatik tekshirish uchun MChJ E-IMZO kalitini sozlang.',
       href: '/admin/settings',
-      actionLabel: 'Kalitni kiritish',
+      actionLabel: 'Kalitni yuklash',
       variant: 'warning',
       icon: KeyRound,
-      badge: 'Soliq / Yuridik',
+      badge: 'Soliq / E-IMZO',
     });
   }
 
