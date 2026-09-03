@@ -3,22 +3,69 @@ import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Hamkorlik Ommaviy Ofertasi — Yaqin Market',
-  description: '"TILAV" MCHJ (Yaqin Market) elektron tijorat vositachilik ommaviy hamkorlik shartnomasi va ofertasi.',
+  description: 'Elektron tijorat vositachilik ommaviy hamkorlik shartnomasi va ofertasi.',
 };
 
-export default function OfertaPage() {
+async function getPlatformConfig() {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.yaqin-market.uz';
+  try {
+    const res = await fetch(`${apiUrl}/api/sellers/platform-config`, {
+      next: { revalidate: 60 },
+    });
+    if (res.ok) {
+      return (await res.json()) as {
+        platformStir: string;
+        platformName: string;
+        commissionRate: number;
+        supportPhone: string;
+        ofertaPdfUrl?: string;
+      };
+    }
+  } catch {
+    // Fallback if API is unreachable during static pre-rendering
+  }
+  return {
+    platformStir: '313296455',
+    platformName: '"TILAV" MCHJ (Yaqin Market)',
+    commissionRate: 12,
+    supportPhone: '+998 77 742 23 02',
+    ofertaPdfUrl: '/api/uploads/legal/oferta.pdf',
+  };
+}
+
+export default async function OfertaPage() {
+  const config = await getPlatformConfig();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.yaqin-market.uz';
+  const pdfFullUrl = config.ofertaPdfUrl
+    ? (config.ofertaPdfUrl.startsWith('http')
+        ? config.ofertaPdfUrl
+        : `${apiUrl}${config.ofertaPdfUrl.startsWith('/') ? '' : '/'}${config.ofertaPdfUrl}`)
+    : null;
+
   return (
     <div className="min-h-screen bg-neutral-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-neutral-200 p-6 sm:p-10">
         <div className="border-b border-neutral-200 pb-6 mb-8">
-          <div className="inline-block px-3 py-1 bg-red-50 text-red-700 text-xs font-semibold rounded-full mb-3">
-            Rasmiy Yuridik Hujjat
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div className="inline-block px-3 py-1 bg-red-50 text-red-700 text-xs font-semibold rounded-full">
+              Rasmiy Yuridik Hujjat
+            </div>
+            {pdfFullUrl && (
+              <a
+                href={pdfFullUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 text-white text-xs font-medium rounded-lg hover:bg-neutral-800 transition"
+              >
+                📥 Rasmiy PDF shartnomani ko‘rish
+              </a>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900">
             Elektron Tijorat Vositachilik (Komissiya) Ommaviy Ofertasi
           </h1>
           <p className="text-sm text-neutral-500 mt-2">
-            Amaldagi tahrir: 2026-yil • Operator: &quot;TILAV&quot; MCHJ • STIR: 313296455
+            Amaldagi tahrir: 2026-yil • Operator: {config.platformName} • STIR: {config.platformStir}
           </p>
         </div>
 
@@ -32,7 +79,7 @@ export default function OfertaPage() {
               1. UMUMIY QOIDALAR VA ATAMALAR
             </h2>
             <p className="mt-2 text-sm">
-              <strong>1.1. &quot;Operator&quot; (Platforma)</strong> — &quot;TILAV&quot; MCHJ (STIR: 313296455), Yaqin Market elektron axborot platformasi egasi va boshqaruvchisi.
+              <strong>1.1. &quot;Operator&quot; (Platforma)</strong> — {config.platformName} (STIR: {config.platformStir}), Yaqin Market elektron axborot platformasi egasi va boshqaruvchisi.
             </p>
             <p className="mt-1 text-sm">
               <strong>1.2. &quot;Hamkor&quot; (Sotuvchi)</strong> — Yaqin Market platformasi orqali xaridorlarga tovar va mahsulotlarni sotish niyatida ushbu Ofertani to‘liq qabul qilgan (akseptlagan) yuridik shaxs, YaTT yoki o‘zini o‘zi band qilgan shaxs.
@@ -59,13 +106,13 @@ export default function OfertaPage() {
               3. XIZMAT HAQI (KOMISSIYA) VA HISOB-KITOBLAR TARTIBI
             </h2>
             <p className="mt-2 text-sm">
-              <strong>3.1.</strong> Operatorning vositachilik komissiyasi har bir muvaffaqiyatli yakunlangan buyurtmaning tovarlar umumiy qiymatidan <strong>12%</strong> miqdorida belgilanadi.
+              <strong>3.1.</strong> Operatorning vositachilik komissiyasi har bir muvaffaqiyatli yakunlangan buyurtmaning tovarlar umumiy qiymatidan <strong>{config.commissionRate}%</strong> miqdorida belgilanadi.
             </p>
             <p className="mt-1 text-sm">
               <strong>3.2.</strong> Do‘kon ochish va ro‘yxatdan o‘tish mutlaqo bepul (0 so‘m). Majburiy boshlang‘ich depozit talab etilmaydi.
             </p>
             <p className="mt-1 text-sm">
-              <strong>3.3.</strong> Savdo tushumlari Operator tomonidan 12% vositachilik komissiyasi ushlab qolingan holda, Hamkor ko‘rsatgan bank hisob raqamiga yoki milliy bank kartasiga (Uzcard/Humo) haftalik / doimiy rejimda o‘tkazib beriladi.
+              <strong>3.3.</strong> Savdo tushumlari Operator tomonidan {config.commissionRate}% vositachilik komissiyasi ushlab qolingan holda, Hamkor ko‘rsatgan bank hisob raqamiga yoki milliy bank kartasiga (Uzcard/Humo) haftalik / doimiy rejimda o‘tkazib beriladi.
             </p>
           </section>
 
@@ -77,7 +124,7 @@ export default function OfertaPage() {
               <strong>4.1.</strong> Hamkorning platformadagi Shaxsiy Balansi real vaqt rejimida yuritiladi.
             </p>
             <p className="mt-1 text-sm">
-              <strong>4.2.</strong> Xaridor naqd pulda to‘lagan buyurtmalar bo‘yicha Operatorning 12% komissiyasi Hamkorning balansiga qarz sifatida yoziladi.
+              <strong>4.2.</strong> Xaridor naqd pulda to‘lagan buyurtmalar bo‘yicha Operatorning {config.commissionRate}% komissiyasi Hamkorning balansiga qarz sifatida yoziladi.
             </p>
             <p className="mt-1 text-sm">
               <strong>4.3.</strong> Agar Hamkorning balansi manfiy (qarz) holatga tushsa, qarzni 3 (uch) kalendar kuni ichida to‘ldirishi shart. Qarz o‘z vaqtida so‘ndirilmasa, tizim Hamkorning do‘kon faoliyatini avtomatik ravishda vaqtincha to‘xtatadi (deaktivatsiya qiladi).
@@ -116,10 +163,10 @@ export default function OfertaPage() {
               7. SOLIQ VA FISKAL MAJBURIYATLAR
             </h2>
             <p className="mt-2 text-sm">
-              <strong>7.1.</strong> O‘zbekiston Respublikasi Soliq kodeksining 463-moddasiga muvofiq, Hamkor my3.soliq.uz davlat soliq portalida Operatorni (&quot;TILAV&quot; MCHJ, STIR: 313296455) o‘ziga rasmiy vositachi (komissioner) sifatida biriktirishi shart.
+              <strong>7.1.</strong> O‘zbekiston Respublikasi Soliq kodeksining 463-moddasiga muvofiq, Hamkor my3.soliq.uz davlat soliq portalida Operatorni ({config.platformName}, STIR: {config.platformStir}) o‘ziga rasmiy vositachi (komissioner) sifatida biriktirishi shart.
             </p>
             <p className="mt-1 text-sm">
-              <strong>7.2.</strong> Operator o‘ziga tegishli 12% vositachilik daromadidan qonunchilikda belgilangan tartibda soliq to‘laydi. Hamkor o‘zining tovar aylanmasi bo‘yicha tanlagan soliq rejimiga muvofiq mustaqil hisobot beradi va soliq to‘laydi.
+              <strong>7.2.</strong> Operator o‘ziga tegishli {config.commissionRate}% vositachilik daromadidan qonunchilikda belgilangan tartibda soliq to‘laydi. Hamkor o‘zining tovar aylanmasi bo‘yicha tanlagan soliq rejimiga muvofiq mustaqil hisobot beradi va soliq to‘laydi.
             </p>
             <p className="mt-1 text-sm">
               <strong>7.3.</strong> Har bir sotilgan tovar bo‘yicha O‘zbekiston Respublikasi Davlat Soliq Qo‘mitasi talablariga mos keluvchi QR-kodli elektron fiskal chek yaratilishi ta&apos;minlanadi.
@@ -143,11 +190,11 @@ export default function OfertaPage() {
 
           <section className="bg-neutral-100 p-5 rounded-xl text-xs space-y-1 text-neutral-600">
             <h3 className="font-bold text-neutral-900 text-sm mb-2">9. OPERATORNING REKVIZITLARI:</h3>
-            <p><strong>Nomi:</strong> &quot;TILAV&quot; MCHJ</p>
-            <p><strong>STIR:</strong> 313296455</p>
-            <p><strong>Platforma:</strong> Yaqin Market (yaqin-market.uz)</p>
+            <p><strong>Nomi:</strong> {config.platformName}</p>
+            <p><strong>STIR:</strong> {config.platformStir}</p>
+            <p><strong>Platforma:</strong> Yaqin Market</p>
             <p><strong>Yuridik manzil:</strong> O‘zbekiston Respublikasi, Qashqadaryo viloyati, Muborak tumani</p>
-            <p><strong>Qo‘llab-quvvatlash xizmati:</strong> +998 99 325 66 85</p>
+            <p><strong>Qo‘llab-quvvatlash xizmati:</strong> {config.supportPhone}</p>
           </section>
         </div>
 

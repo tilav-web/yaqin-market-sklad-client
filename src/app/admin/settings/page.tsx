@@ -20,6 +20,7 @@ import {
   KeyRound,
   MapPin,
   Percent,
+  Phone,
   QrCode,
   Receipt,
   RefreshCw,
@@ -167,6 +168,13 @@ const SETTINGS_METADATA: Record<string, SettingMeta> = {
     label: 'Operator STIR (INN) raqami',
     icon: Building2,
     hint: "Operator korxonasining 9 xonali davlat soliq identifikatsiya raqami (313296455).",
+  },
+  support_phone: {
+    tab: 'legal',
+    category: 'Operator Yuridik Shaxsi',
+    label: 'Operator rasmiy aloqa telefoni',
+    icon: Phone,
+    hint: "Ilova va ommaviy ofertada ko'rsatiladigan rasmiy qo'llab-quvvatlash telefon raqami (+998 77 742 23 02).",
   },
   soliq_operator_tin: {
     tab: 'legal',
