@@ -539,6 +539,17 @@ interface SoliqStatus {
   tokenExpiresAt: string;
   operatorTin: string;
   tokenPreview: string;
+  certificate?: {
+    companyName: string;
+    directorName: string;
+    tin: string;
+    pinfl: string;
+    region: string;
+    validFrom: string;
+    validTo: string;
+    issuer: string;
+    verified: boolean;
+  };
 }
 
 function SoliqEimzoManager() {
@@ -732,6 +743,62 @@ function SoliqEimzoManager() {
               : 'Soliq Integratsiyasi: Tayyor & Faol'}
           </span>
         </div>
+
+        {/* Official E-IMZO State Certificate Passport */}
+        {status?.certificate && (
+          <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 transition-all">
+            <div className="flex items-center justify-between pb-3 border-b border-emerald-500/15 mb-3 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-xs font-bold text-foreground uppercase tracking-wider">
+                  Davlat E-IMZO Sertifikati (Rasmiy Pasport)
+                </span>
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <Check className="size-3" /> Yuridik Tasdiqlangan (Faol)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="rounded-xl bg-background/80 p-2.5 border border-border/60">
+                <span className="text-[10px] font-medium text-muted-foreground block">Tashkilot nomi</span>
+                <span className="font-bold text-foreground truncate block">
+                  {status.certificate.companyName}
+                </span>
+              </div>
+              <div className="rounded-xl bg-background/80 p-2.5 border border-border/60">
+                <span className="text-[10px] font-medium text-muted-foreground block">Rahbar (Direktor)</span>
+                <span className="font-bold text-foreground truncate block">
+                  {status.certificate.directorName}
+                </span>
+              </div>
+              <div className="rounded-xl bg-background/80 p-2.5 border border-border/60">
+                <span className="text-[10px] font-medium text-muted-foreground block">STIR (INN)</span>
+                <span className="font-mono font-bold text-foreground">
+                  {status.certificate.tin}
+                </span>
+              </div>
+              <div className="rounded-xl bg-background/80 p-2.5 border border-border/60">
+                <span className="text-[10px] font-medium text-muted-foreground block">JShShIR (PINFL)</span>
+                <span className="font-mono font-bold text-foreground">
+                  {status.certificate.pinfl}
+                </span>
+              </div>
+              <div className="rounded-xl bg-background/80 p-2.5 border border-border/60 sm:col-span-2">
+                <span className="text-[10px] font-medium text-muted-foreground block">Yuridik manzil</span>
+                <span className="font-medium text-foreground">
+                  {status.certificate.region}
+                </span>
+              </div>
+              <div className="rounded-xl bg-background/80 p-2.5 border border-border/60 sm:col-span-2">
+                <span className="text-[10px] font-medium text-muted-foreground block">Amal qilish muddati</span>
+                <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                  {status.certificate.validFrom} — {status.certificate.validTo}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Test Result Display */}
         {testResult && (
