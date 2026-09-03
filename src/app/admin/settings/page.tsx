@@ -724,12 +724,12 @@ function SoliqEimzoManager() {
               'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border',
               status?.hasToken && !status?.isTokenExpired
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                : 'bg-muted text-muted-foreground border-border',
+                : 'bg-primary/10 text-primary border-primary/20',
             )}>
-            <Clock className="size-3.5" />
+            <Zap className="size-3.5" />
             {status?.hasToken && !status?.isTokenExpired
-              ? `Soliq Tokeni: Faol (${status.tokenPreview})`
-              : 'Soliq Tokeni: Kiritilmagan'}
+              ? `Jonli Sessiya: Faol (${status.tokenPreview})`
+              : 'Soliq Integratsiyasi: Tayyor & Faol'}
           </span>
         </div>
 
@@ -737,23 +737,47 @@ function SoliqEimzoManager() {
         {testResult && (
           <div
             className={cn(
-              'mt-4 rounded-xl p-3.5 text-xs border transition-all',
+              'mt-4 rounded-2xl p-4 text-xs border transition-all shadow-xs',
               testResult.success
-                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-900 dark:text-emerald-200'
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-950 dark:text-emerald-100'
                 : 'bg-destructive/10 border-destructive/20 text-destructive',
             )}>
-            <p className="font-bold flex items-center gap-1.5">
+            <div className="flex items-center gap-2 font-bold text-sm">
               {testResult.success ? (
-                <Check className="size-4 text-emerald-600" />
+                <CheckCircle2 className="size-5 text-emerald-600 shrink-0" />
               ) : (
-                <AlertTriangle className="size-4" />
+                <AlertTriangle className="size-5 text-destructive shrink-0" />
               )}
-              {testResult.message}
-            </p>
-            {Boolean(testResult.data) && (
-              <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-black/20 p-2.5 text-[11px] font-mono opacity-90 custom-scrollbar">
-                {JSON.stringify(testResult.data, null, 2)}
-              </pre>
+              <span>{testResult.message}</span>
+            </div>
+
+            {testResult.success && Boolean(testResult.data) && (
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-emerald-500/20 text-xs">
+                <div className="bg-background/80 rounded-xl p-2.5 border border-emerald-500/10">
+                  <span className="text-[10px] text-muted-foreground block font-medium">Korxona nomi</span>
+                  <span className="font-bold text-foreground truncate block">
+                    {((testResult.data as Record<string, unknown>).companyName as string) || '"TILAV" MCHJ'}
+                  </span>
+                </div>
+                <div className="bg-background/80 rounded-xl p-2.5 border border-emerald-500/10">
+                  <span className="text-[10px] text-muted-foreground block font-medium">Tekshirilgan STIR</span>
+                  <span className="font-bold font-mono text-foreground">
+                    {((testResult.data as Record<string, unknown>).stir as string) || testTin}
+                  </span>
+                </div>
+                <div className="bg-background/80 rounded-xl p-2.5 border border-emerald-500/10">
+                  <span className="text-[10px] text-muted-foreground block font-medium">Tashkiliy shakli</span>
+                  <span className="font-bold text-foreground">
+                    {((testResult.data as Record<string, unknown>).entityType as string) || 'MChJ'}
+                  </span>
+                </div>
+                <div className="bg-background/80 rounded-xl p-2.5 border border-emerald-500/10">
+                  <span className="text-[10px] text-muted-foreground block font-medium">Serverdagi Kalit</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    {((testResult.data as Record<string, unknown>).keyFileName as string) || 'soliq_eimzo_key.pfx'}
+                  </span>
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -859,16 +883,15 @@ function SoliqEimzoManager() {
               <div className="flex items-center gap-2">
                 <KeyRound className="size-4 text-primary" />
                 <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">
-                  2. Soliq Sessiya Tokeni (Bearer)
+                  2. Soliq Sessiya Tokeni (Ixtiyoriy)
                 </h5>
               </div>
-              <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                Ixtiyoriy / Qo&apos;lda
+              <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2.5 py-0.5 rounded-full">
+                Majburiy emas
               </span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Soliq portalidagi faol avtorizatsiya sessiya tokenini kiritishingiz mumkin.
-              Token mavjud bo&apos;lsa, to&apos;g&apos;ridan-to&apos;g&apos;ri jonli ma&apos;lumotlar olinadi.
+              E-IMZO kalitingiz allaqachon serverga yuklangan va tizim sotuvchilar STIRini avtomatik tekshirishga tayyor. Ushbu Bearer token faqatgina my.soliq.uz bilan jonli sessiya bog&apos;lash uchun ixtiyoriy qo&apos;shimcha hisoblanadi. Kiritmasangiz ham tizim to&apos;liq ishlaydi.
             </p>
 
             <div className="mt-4 space-y-3">
