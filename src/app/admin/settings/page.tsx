@@ -545,6 +545,7 @@ function SoliqEimzoManager() {
   const qc = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [operatorTin, setOperatorTin] = useState('313296455');
   const [manualToken, setManualToken] = useState('');
   const [testTin, setTestTin] = useState('313296455');
@@ -587,6 +588,7 @@ function SoliqEimzoManager() {
       setPassword('');
       refetchStatus();
       qc.invalidateQueries({ queryKey: ['admin', 'settings'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'soliq', 'status'] });
     } catch (err) {
       toast.error(extractErrorMessage(err));
     } finally {
@@ -608,6 +610,7 @@ function SoliqEimzoManager() {
       setManualToken('');
       refetchStatus();
       qc.invalidateQueries({ queryKey: ['admin', 'settings'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'soliq', 'status'] });
     } catch (err) {
       toast.error(extractErrorMessage(err));
     } finally {
@@ -642,54 +645,27 @@ function SoliqEimzoManager() {
       {/* 1. Status Overview Card */}
       <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3.5">
             <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <ShieldCheck className="size-6" />
+              <KeyRound className="size-6" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-sm font-bold text-foreground">
-                  Davlat Soliq & E-IMZO (ERI) Integratsiyasi
+                  Davlat Soliq (my.soliq.uz) & E-IMZO Integratsiyasi
                 </h4>
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.68rem] font-bold border',
-                    status?.hasKey
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                      : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-                  )}>
-                  {status?.hasKey ? (
-                    <CheckCircle2 className="size-3" />
-                  ) : (
-                    <AlertTriangle className="size-3" />
-                  )}
-                  {status?.hasKey
-                    ? `Kalit yuklangan (${status.keyFileName})`
-                    : 'Kalit (.pfx) yuklanmagan'}
-                </span>
-
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.68rem] font-bold border',
-                    status?.hasToken && !status?.isTokenExpired
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                      : 'bg-muted text-muted-foreground border-border',
-                  )}>
-                  <Clock className="size-3" />
-                  {status?.hasToken && !status?.isTokenExpired
-                    ? 'Soliq Tokeni Faol'
-                    : 'Token kiritilmagan'}
+                <span className="rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-[0.68rem] font-bold">
+                  Operator: &quot;TILAV&quot; MCHJ ({status?.operatorTin || '313296455'})
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Yangi sotuvchilar STIR kiritganda Davlat Soliq bazasidan
-                ma&apos;lumotlarni Didox vositachisisiz, to&apos;g&apos;ridan-to&apos;g&apos;ri
-                MChJ E-IMZO kaliti orqali bepul tekshirish tizimi.
+              <p className="text-xs text-muted-foreground mt-1 max-w-2xl leading-relaxed">
+                Yangi sotuvchilar (do&apos;konlar) ro&apos;yxatdan o&apos;tganda ularning STIR ma&apos;lumotlarini Davlat Soliq bazasidan
+                to&apos;g&apos;ridan-to&apos;g&apos;ri MChJ E-IMZO kaliti orqali bepul va avtomatik tekshirish tizimi.
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
             <input
               type="text"
               value={testTin}
@@ -711,11 +687,57 @@ function SoliqEimzoManager() {
           </div>
         </div>
 
+        {/* Live Status Indicators */}
+        <div className="mt-4 pt-4 border-t border-border/60 flex flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border',
+              status?.hasKey
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+            )}>
+            {status?.hasKey ? (
+              <CheckCircle2 className="size-3.5" />
+            ) : (
+              <AlertTriangle className="size-3.5" />
+            )}
+            {status?.hasKey
+              ? `E-IMZO Kaliti: Yuklangan (${status.keyFileName} • ${(status.keyFileSize / 1024).toFixed(1)} KB)`
+              : 'E-IMZO Kaliti: Yuklanmagan'}
+          </span>
+
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border',
+              status?.hasPassword
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                : 'bg-muted text-muted-foreground border-border',
+            )}>
+            <ShieldCheck className="size-3.5" />
+            {status?.hasPassword
+              ? 'Kalit Paroli: Saqlangan (AES-256 shifrlangan)'
+              : 'Kalit Paroli: Kiritilmagan'}
+          </span>
+
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border',
+              status?.hasToken && !status?.isTokenExpired
+                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                : 'bg-muted text-muted-foreground border-border',
+            )}>
+            <Clock className="size-3.5" />
+            {status?.hasToken && !status?.isTokenExpired
+              ? `Soliq Tokeni: Faol (${status.tokenPreview})`
+              : 'Soliq Tokeni: Kiritilmagan'}
+          </span>
+        </div>
+
         {/* Test Result Display */}
         {testResult && (
           <div
             className={cn(
-              'mt-4 rounded-xl p-3 text-xs border transition-all',
+              'mt-4 rounded-xl p-3.5 text-xs border transition-all',
               testResult.success
                 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-900 dark:text-emerald-200'
                 : 'bg-destructive/10 border-destructive/20 text-destructive',
@@ -742,43 +764,67 @@ function SoliqEimzoManager() {
         {/* Form A: Upload .pfx Key and Password */}
         <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <FileCode className="size-4 text-primary" />
-              <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">
-                1. MChJ E-IMZO (.pfx / .p12) Kalitini Yuklash
-              </h5>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <FileCode className="size-4 text-primary" />
+                <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">
+                  1. MChJ E-IMZO Kalitini Yuklash
+                </h5>
+              </div>
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                Asosiy
+              </span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Operator MChJ nomidagi E-IMZO kalit faylini va parolini kiriting.
-              Fayl serverda xavfsiz saqlanadi, paroli esa AES-256 bilan
-              shifrlanadi.
+              O&apos;zingizning MChJ nomidagi E-IMZO kalit faylini (.pfx / .p12) va uning parolini kiriting.
+              Fayl serverda xavfsiz papkada saqlanadi, paroli esa AES-256-GCM algoritmi bilan shifrlanadi.
             </p>
 
-            <form onSubmit={handleUploadKey} className="mt-4 space-y-3">
+            <form onSubmit={handleUploadKey} className="mt-4 space-y-3.5">
               <div>
                 <label className="block text-[11px] font-bold text-muted-foreground mb-1">
-                  Kalit Fayli (.pfx / .p12)
+                  E-IMZO Kalit Fayli (.pfx / .p12)
                 </label>
-                <input
-                  type="file"
-                  accept=".pfx,.p12"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-primary hover:file:bg-primary/20"
-                />
+                <div className="relative">
+                  <input
+                    type="file"
+                    id="eimzo-file-input"
+                    accept=".pfx,.p12"
+                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-primary hover:file:bg-primary/20"
+                  />
+                </div>
+                {file && (
+                  <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                    <CheckCircle2 className="size-3" /> Tanlangan fayl: {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                  </p>
+                )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-muted-foreground mb-1">
                     Kalit Paroli
                   </label>
-                  <input
-                    type="password"
-                    placeholder="Kalit paroli..."
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary/50"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Kalit paroli..."
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 pr-8 text-xs outline-none focus:border-primary/50"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground">
+                      {showPassword ? (
+                        <EyeOff className="size-3.5" />
+                      ) : (
+                        <Eye className="size-3.5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-[11px] font-bold text-muted-foreground mb-1">
@@ -798,8 +844,8 @@ function SoliqEimzoManager() {
                 type="submit"
                 size="sm"
                 disabled={uploading || !file || !password}
-                className="w-full h-9 rounded-xl gap-1.5 text-xs font-semibold">
-                <Upload className="size-3.5" />
+                className="w-full h-10 rounded-xl gap-2 text-xs font-bold shadow-xs">
+                <Upload className="size-4" />
                 {uploading ? 'Yuklanmoqda...' : 'Kalit va Parolni Saqlash'}
               </Button>
             </form>
@@ -809,16 +855,20 @@ function SoliqEimzoManager() {
         {/* Form B: Update Soliq Session Token */}
         <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <KeyRound className="size-4 text-primary" />
-              <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">
-                2. Soliq Sessiya Tokeni (Bearer Token)
-              </h5>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <KeyRound className="size-4 text-primary" />
+                <h5 className="text-xs font-bold text-foreground uppercase tracking-wider">
+                  2. Soliq Sessiya Tokeni (Bearer)
+                </h5>
+              </div>
+              <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                Ixtiyoriy / Qo&apos;lda
+              </span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Soliq portalidan olingan faol Bearer tokenni bu yerga kiritishingiz
-              mumkin. Token har safar sotuvchilar STIR ma&apos;lumotlarini
-              tortishda avtorizatsiya uchun ishlatiladi.
+              Soliq portalidagi faol avtorizatsiya sessiya tokenini kiritishingiz mumkin.
+              Token mavjud bo&apos;lsa, to&apos;g&apos;ridan-to&apos;g&apos;ri jonli ma&apos;lumotlar olinadi.
             </p>
 
             <div className="mt-4 space-y-3">
@@ -848,7 +898,7 @@ function SoliqEimzoManager() {
                 variant="outline"
                 disabled={savingToken || !manualToken.trim()}
                 onClick={handleSaveToken}
-                className="w-full h-9 rounded-xl gap-1.5 text-xs font-semibold">
+                className="w-full h-10 rounded-xl gap-1.5 text-xs font-semibold">
                 <Save className="size-3.5" />
                 {savingToken ? 'Saqlanmoqda...' : 'Tokenni Yangilash'}
               </Button>
@@ -860,6 +910,16 @@ function SoliqEimzoManager() {
   );
 }
 
+const HIDDEN_FROM_GRID_KEYS = new Set([
+  'didox_user_key',
+  'didox_api_url',
+  'soliq_key_path',
+  'soliq_key_password_enc',
+  'soliq_auth_token',
+  'soliq_token_expires_at',
+  'soliq_operator_tin',
+]);
+
 const EMPTY_SETTINGS: Setting[] = [];
 
 export default function SettingsPage() {
@@ -869,13 +929,20 @@ export default function SettingsPage() {
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [showSecret, setShowSecret] = useState<Record<string, boolean>>({});
 
+  const { data: soliqStatus } = useQuery<SoliqStatus>({
+    queryKey: ['admin', 'soliq', 'status'],
+    queryFn: async () => (await api.get('/admin/settings/soliq/status')).data,
+    staleTime: 30_000,
+  });
+
   const { data, isLoading, isError, error, refetch } = useQuery<Setting[]>({
     queryKey: ['admin', 'settings'],
     queryFn: async () => (await api.get('/admin/settings')).data,
+    staleTime: 60_000,
   });
 
   const saveMutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       key,
       value,
       force,
@@ -883,20 +950,24 @@ export default function SettingsPage() {
       key: string;
       value: string;
       force?: boolean;
-    }) => api.put(`/admin/settings/${key}`, force ? { value, force } : { value }),
-    onSuccess: (_, { key }) => {
+    }) => {
+      const res = await api.put(`/admin/settings/${key}`, force ? { value, force } : { value });
+      return res.data;
+    },
+    onSuccess: (updated: Setting) => {
+      toast.success(`Sozlama saqlandi: ${updated.key}`);
       qc.invalidateQueries({ queryKey: ['admin', 'settings'] });
-      qc.invalidateQueries({ queryKey: ['admin', 'economics'] });
       setEditing((prev) => {
         const next = { ...prev };
-        delete next[key];
+        delete next[updated.key];
         return next;
       });
-      toast.success('Sozlama muvaffaqiyatli saqlandi');
     },
-    onError: (e, { key, value }) => {
-      const msg = extractErrorMessage(e);
-      if (msg.includes('force=true')) {
+    onError: (err: unknown, vars) => {
+      const msg = extractErrorMessage(err);
+      const isWarn = msg.toLowerCase().includes('ogohlantirish');
+      if (isWarn) {
+        const { key, value } = vars;
         if (window.confirm(`${msg}\n\nBaribir saqlashni tasdiqlaysizmi?`)) {
           saveMutation.mutate({ key, value, force: true });
         }
@@ -911,14 +982,18 @@ export default function SettingsPage() {
   const tabItems = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return settingsList.filter((s) => {
+      if (HIDDEN_FROM_GRID_KEYS.has(s.key)) return false;
+
       const meta = SETTINGS_METADATA[s.key];
+      if (!meta) return false;
+
       if (q) {
-        const matchLabel = (meta?.label || s.key).toLowerCase().includes(q);
-        const matchDesc = (s.description || meta?.hint || '').toLowerCase().includes(q);
+        const matchLabel = (meta.label || s.key).toLowerCase().includes(q);
+        const matchDesc = (s.description || meta.hint || '').toLowerCase().includes(q);
         const matchKey = s.key.toLowerCase().includes(q);
         return matchLabel || matchDesc || matchKey;
       }
-      return meta?.tab === activeTab || (!meta && activeTab === 'finance');
+      return meta.tab === activeTab;
     });
   }, [settingsList, activeTab, searchQuery]);
 
@@ -949,31 +1024,31 @@ export default function SettingsPage() {
       id: 'finance',
       label: 'Moliya & Komissiyalar',
       icon: DollarSign,
-      count: settingsList.filter((s) => SETTINGS_METADATA[s.key]?.tab === 'finance').length,
+      count: settingsList.filter((s) => !HIDDEN_FROM_GRID_KEYS.has(s.key) && SETTINGS_METADATA[s.key]?.tab === 'finance').length,
     },
     {
       id: 'legal',
       label: 'Yuridik & Soliq (E-IMZO)',
       icon: Building2,
-      count: settingsList.filter((s) => SETTINGS_METADATA[s.key]?.tab === 'legal').length,
+      count: settingsList.filter((s) => !HIDDEN_FROM_GRID_KEYS.has(s.key) && SETTINGS_METADATA[s.key]?.tab === 'legal').length,
     },
     {
       id: 'fiscal',
       label: 'Fiskal & Cheklar',
       icon: Receipt,
-      count: settingsList.filter((s) => SETTINGS_METADATA[s.key]?.tab === 'fiscal').length,
+      count: settingsList.filter((s) => !HIDDEN_FROM_GRID_KEYS.has(s.key) && SETTINGS_METADATA[s.key]?.tab === 'fiscal').length,
     },
     {
       id: 'risk',
       label: 'Anti-Fraud & Xavfsizlik',
       icon: ShieldAlert,
-      count: settingsList.filter((s) => SETTINGS_METADATA[s.key]?.tab === 'risk').length,
+      count: settingsList.filter((s) => !HIDDEN_FROM_GRID_KEYS.has(s.key) && SETTINGS_METADATA[s.key]?.tab === 'risk').length,
     },
     {
       id: 'inventory',
       label: 'Ombor & Mahsulotlar',
       icon: Boxes,
-      count: settingsList.filter((s) => SETTINGS_METADATA[s.key]?.tab === 'inventory').length,
+      count: settingsList.filter((s) => !HIDDEN_FROM_GRID_KEYS.has(s.key) && SETTINGS_METADATA[s.key]?.tab === 'inventory').length,
     },
   ];
 
@@ -999,6 +1074,40 @@ export default function SettingsPage() {
           </div>
         }
       />
+
+      {/* Missing E-IMZO Key Alert Banner */}
+      {!soliqStatus?.hasKey && !searchQuery && (
+        <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-amber-500/20 p-2.5 text-amber-600 dark:text-amber-400 shrink-0">
+                <KeyRound className="size-5" />
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-2">
+                  <span>MChJ E-IMZO kaliti yuklanmagan</span>
+                  <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[0.62rem] font-bold text-amber-700 dark:text-amber-300">
+                    Amal talab etiladi
+                  </span>
+                </h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Yangi sotuvchilar STIR ma&apos;lumotlarini Davlat Soliq bazasidan avtomatik tekshirish uchun &quot;Yuridik &amp; Soliq (E-IMZO)&quot; bo&apos;limiga kiring va kalitni yuklang.
+                </p>
+              </div>
+            </div>
+            {activeTab !== 'legal' && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setActiveTab('legal')}
+                className="gap-1.5 font-bold text-xs shrink-0 rounded-xl shadow-xs">
+                <KeyRound className="size-3.5" />
+                Kalitni yuklash →
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Segmented Tab Navigation */}
       {!searchQuery && (
