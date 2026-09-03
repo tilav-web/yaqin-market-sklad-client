@@ -53,8 +53,7 @@ export function SystemHealthModal({
       const settings = settingsRes.status === 'fulfilled' ? settingsRes.value.data : [];
       const soliqKey =
         settings.find((s) => s.key === 'soliq_key_path')?.value ||
-        settings.find((s) => s.key === 'soliq_auth_token')?.value ||
-        settings.find((s) => s.key === 'didox_user_key')?.value;
+        settings.find((s) => s.key === 'soliq_auth_token')?.value;
       const stir =
         settings.find((s) => s.key === 'soliq_operator_tin')?.value ||
         settings.find((s) => s.key === 'platform_stir')?.value;

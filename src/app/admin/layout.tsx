@@ -318,9 +318,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     queryFn: async () => {
       try {
         const res = await api.get<Array<{ key: string; value: string }>>('/admin/settings');
-        const didox = res.data.find((s) => s.key === 'didox_user_key')?.value;
-        const stir = res.data.find((s) => s.key === 'platform_stir')?.value;
-        return !didox || !stir ? 1 : 0;
+        const stir =
+          res.data.find((s) => s.key === 'soliq_operator_tin')?.value ||
+          res.data.find((s) => s.key === 'platform_stir')?.value;
+        const soliqKey =
+          res.data.find((s) => s.key === 'soliq_key_path')?.value ||
+          res.data.find((s) => s.key === 'soliq_auth_token')?.value;
+        return !stir || !soliqKey ? 1 : 0;
       } catch {
         return 0;
       }
