@@ -9,6 +9,7 @@ import {
   Calendar,
   ClipboardList,
   CreditCard,
+  DollarSign,
   FileText,
   FolderTree,
   Inbox,
@@ -43,6 +44,12 @@ interface DashboardStats {
   gmvTotal: number;
   gmv7d: number;
   pendingApplications: number;
+  commissionRate?: number;
+  platformRevenue?: number;
+  estimatedTax?: number;
+  netProfit?: number;
+  platformRevenue7d?: number;
+  netProfit7d?: number;
 }
 
 interface TimelinePoint {
@@ -224,6 +231,77 @@ export default function AdminDashboardPage() {
 
       {/* Executive Action & Attention Hub */}
       <ExecutiveActionHub />
+
+      {/* Platform Financial & Net Profit Highlight Card */}
+      <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-card via-card to-emerald-500/5 p-5 shadow-xs">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-border/70">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <Wallet className="size-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm font-bold text-foreground">
+                  Operator Sof Foydasi va Moliyaviy Tushum
+                </h3>
+                <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[0.68rem] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  AOS (4% soliq hisobi)
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Soliq Kodeksining 463-moddasiga binoan faqat {d.commissionRate ?? 12}% vositachilik komissiyasidan 4% aylanma solig&apos;i chegirilgan holdagi sof tushum
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link
+              href="/admin/balance"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-all">
+              <DollarSign className="size-3.5 text-emerald-600" />
+              Balans & Hisob-kitob
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="rounded-xl border border-emerald-500/20 bg-background/80 p-4 shadow-2xs">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
+              Sof Foyda (Net Profit)
+            </span>
+            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">
+              {money(d.netProfit ?? 0)}
+            </span>
+            <span className="text-[11px] text-muted-foreground mt-1 block">
+              Oxirgi 7 kunda: <strong className="text-foreground">{money(d.netProfit7d ?? 0)}</strong>
+            </span>
+          </div>
+
+          <div className="rounded-xl border border-border/80 bg-background/80 p-4 shadow-2xs">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
+              Platforma Komissiyasi ({d.commissionRate ?? 12}%)
+            </span>
+            <span className="text-2xl font-extrabold text-foreground mt-1 block">
+              {money(d.platformRevenue ?? 0)}
+            </span>
+            <span className="text-[11px] text-muted-foreground mt-1 block">
+              Umumiy GMV aylanmadan xizmat haqi
+            </span>
+          </div>
+
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 shadow-2xs">
+            <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider block">
+              Davlatga Soliq Zaxirasi (AOS 4%)
+            </span>
+            <span className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-1 block">
+              {money(d.estimatedTax ?? 0)}
+            </span>
+            <span className="text-[11px] text-muted-foreground mt-1 block">
+              Komissiyadan 4% soliq to&apos;lovi uchun
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* Main KPI Stat Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
