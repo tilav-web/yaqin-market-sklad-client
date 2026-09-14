@@ -11,6 +11,7 @@ import {
   Coins,
   Copy,
   ExternalLink,
+  FileSpreadsheet,
   HelpCircle,
   History,
   Info,
@@ -237,9 +238,62 @@ export function TaxReportsSection() {
     onError: (err) => toast.error(extractErrorMessage(err)),
   });
 
+  const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
+
   const handleCopyText = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} nusxalandi!`);
+  };
+
+  const handleDownloadExcel = async () => {
+    try {
+      setIsDownloadingExcel(true);
+      const targetPeriod =
+        calData?.items.find((i) => i.id === 'salary_ndfl')?.period || '2026-08';
+      const res = await api.post(
+        '/admin/fiscal/tax-reports/export-excel',
+        {
+          reportType: 'salary_ndfl',
+          period: targetPeriod,
+          employees: employees.map((emp) => {
+            const gross = Math.round(emp.baseSalary * emp.rate);
+            const ndfl = Math.round(gross * 0.12);
+            const inps = Math.round(gross * 0.001);
+            const social = Math.round(gross * 0.12);
+            return {
+              name: emp.name,
+              pinfl: emp.pinfl,
+              position: emp.role,
+              rate: emp.rate,
+              salary: gross,
+              ndfl,
+              inps,
+              social,
+            };
+          }),
+        },
+        { responseType: 'blob' },
+      );
+
+      const blob = new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `soliq_11101_20_${targetPeriod}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success(
+        "Soliq uchun Excel fayl (11101_20) muvaffaqiyatli shakllantirildi va yuklab olindi!",
+      );
+    } catch (err) {
+      toast.error(extractErrorMessage(err));
+    } finally {
+      setIsDownloadingExcel(false);
+    }
   };
 
   const calData = calendarQ.data;
@@ -475,7 +529,18 @@ export function TaxReportsSection() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadExcel}
+                  disabled={isDownloadingExcel}
+                  className="border-emerald-500/30 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                  title="my.soliq.uz ga yuklash uchun 11101_20 shablonini to'ldirib yuklab olish"
+                >
+                  <FileSpreadsheet className="size-3.5 text-emerald-600" />
+                  {isDownloadingExcel ? 'Yuklanmoqda...' : 'Soliq Excel shabloni (11101_20)'}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -731,6 +796,18 @@ export function TaxReportsSection() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadExcel}
+                    disabled={isDownloadingExcel}
+                    className="border-emerald-500/30 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                    title="my.soliq.uz ga yuklash uchun 11101_20 shablonini to'ldirib yuklab olish"
+                  >
+                    <FileSpreadsheet className="size-3.5 text-emerald-600" />
+                    {isDownloadingExcel ? 'Yuklanmoqda...' : 'Excel shablonni yuklab olish (.xlsx)'}
+                  </Button>
+
                   <Button
                     variant="outline"
                     size="sm"
