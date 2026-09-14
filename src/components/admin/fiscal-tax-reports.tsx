@@ -44,17 +44,37 @@ export interface TaxReportRecord {
   submissionConfirmation?: string | null;
 }
 
+export interface SoliqSyncMeta {
+  reportNumber?: string;
+  packet?: string;
+  status?: 'accepted' | 'error' | 'draft' | 'pending';
+  statusRaw?: string;
+  errorReason?: string | null;
+  lastSyncedAt?: string;
+}
+
+export interface TaxCalendarAlert {
+  id: string;
+  level: 'error' | 'warning' | 'info';
+  title: string;
+  message: string;
+  reportNumber?: string;
+  packet?: string;
+}
+
 interface TaxCalendarItem {
   id: string;
   type: string;
+  packet?: string;
   title: string;
   subtitle: string;
   period: string;
   periodLabel: string;
   dueDate: string;
   daysRemaining: number;
-  status: 'pending' | 'submitted' | 'overdue';
+  status: 'pending' | 'submitted' | 'overdue' | 'error' | 'draft';
   submittedReport?: TaxReportRecord | null;
+  soliqSync?: SoliqSyncMeta;
   standardDay: number;
   description: string;
 }
@@ -69,6 +89,7 @@ interface TaxCalendarData {
     taxRegime: string;
   };
   items: TaxCalendarItem[];
+  alerts?: TaxCalendarAlert[];
   hasOverdue: boolean;
   hasUrgent: boolean;
 }
@@ -103,15 +124,15 @@ interface ProfitVatCalculation {
   turnoverTaxAmount?: number;
 }
 
-type SubTab = 'overview' | 'salary' | 'vat' | 'profit' | 'turnover' | 'history';
+type SubTab = 'overview' | 'salary' | 'turnover' | 'history' | 'vat' | 'profit';
 
 const SUB_TABS: { key: SubTab; label: string; icon: React.ElementType; badge?: string }[] = [
   { key: 'overview', label: 'Umumiy & Taqvim', icon: Calendar },
-  { key: 'salary', label: 'Xodimlar & Oylik (15-sana)', icon: Users },
-  { key: 'vat', label: 'QQS 12% (20-sana)', icon: ReceiptText },
-  { key: 'profit', label: 'Foyda Solig\u02BBi 15% (Choraklik)', icon: TrendingUp },
-  { key: 'turnover', label: 'Aylanma Solig\u02BBi 4%', icon: Coins },
+  { key: 'salary', label: 'Xodimlar & Oylik (11101_20)', icon: Users, badge: '15-sana' },
+  { key: 'turnover', label: 'Aylanma Solig\u02BBi 4% (10104_36)', icon: Coins, badge: 'Asosiy' },
   { key: 'history', label: 'Hisobotlar Tarixi', icon: History },
+  { key: 'vat', label: 'QQS 12% (Mavjud emas)', icon: ReceiptText },
+  { key: 'profit', label: 'Foyda Solig\u02BBi 15% (Mavjud emas)', icon: TrendingUp },
 ];
 
 const fmt = (n: number) => Math.round(n).toLocaleString('uz-UZ');
@@ -239,17 +260,32 @@ export function TaxReportsSection() {
   });
 
   const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
+  const [salaryPeriod, setSalaryPeriod] = useState<string>('2026-08');
+
+  /* ─── Soliq Live Sync Mutation ─── */
+  const syncSoliqMut = useMutation({
+    mutationFn: async () => (await api.post('/admin/fiscal/tax-reports/sync-soliq')).data,
+    onSuccess: (data: { message?: string }) => {
+      toast.success(data?.message || 'Soliq portali bilan muvaffaqiyatli sinxronlandi!');
+      qc.invalidateQueries({ queryKey: ['admin', 'tax-reports-calendar'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'tax-reports-history'] });
+    },
+    onError: (err) => toast.error(extractErrorMessage(err)),
+  });
 
   const handleCopyText = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} nusxalandi!`);
   };
 
-  const handleDownloadExcel = async () => {
+  const handleDownloadExcel = async (customPeriod?: string) => {
     try {
       setIsDownloadingExcel(true);
       const targetPeriod =
-        calData?.items.find((i) => i.id === 'salary_ndfl')?.period || '2026-08';
+        customPeriod ||
+        salaryPeriod ||
+        calData?.items.find((i) => i.id === 'salary_ndfl')?.period ||
+        '2026-08';
       const res = await api.post(
         '/admin/fiscal/tax-reports/export-excel',
         {
@@ -287,7 +323,7 @@ export function TaxReportsSection() {
       link.remove();
       window.URL.revokeObjectURL(url);
       toast.success(
-        "Soliq uchun Excel fayl (11101_20) muvaffaqiyatli shakllantirildi va yuklab olindi!",
+        `Soliq uchun Excel fayl (11101_20, ${targetPeriod}) muvaffaqiyatli shakllantirildi va yuklab olindi!`,
       );
     } catch (err) {
       toast.error(extractErrorMessage(err));
@@ -330,15 +366,29 @@ export function TaxReportsSection() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => syncSoliqMut.mutate()}
+              disabled={syncSoliqMut.isPending}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm"
+              title="Serverdagi E-IMZO orqali my.soliq.uz bilan live sinxronlash"
+            >
+              <RefreshCw
+                className={cn('size-3.5', syncSoliqMut.isPending && 'animate-spin')}
+              />
+              {syncSoliqMut.isPending ? 'Sinxronlanmoqda...' : '🔄 Soliqdan yangilash (Live)'}
+            </Button>
             <a
-              href="https://my.soliq.uz"
+              href="https://oldmy.soliq.uz"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+              title="oldmy.soliq.uz hisobotlar jurnaliga o'tish"
             >
               <ExternalLink className="size-3.5" />
-              my.soliq.uz ga o&apos;tish
+              my.soliq.uz
             </a>
             <Button
               variant="outline"
@@ -350,7 +400,7 @@ export function TaxReportsSection() {
               disabled={calendarQ.isFetching}
             >
               <RefreshCw className={cn('size-3.5', calendarQ.isFetching && 'animate-spin')} />
-              Yangilash
+              Taqvim
             </Button>
           </div>
         </div>
@@ -373,6 +423,16 @@ export function TaxReportsSection() {
             >
               <t.icon className="size-3.5" />
               {t.label}
+              {t.badge && (
+                <span
+                  className={cn(
+                    'ml-1 rounded px-1.5 py-0.2 text-[10px] font-bold',
+                    isActive ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-primary/10 text-primary',
+                  )}
+                >
+                  {t.badge}
+                </span>
+              )}
             </button>
           );
         })}
@@ -385,13 +445,93 @@ export function TaxReportsSection() {
             <div>
               <h3 className="text-base font-bold text-foreground">Soliq Taqvimi &amp; Yaqinlashayotgan Muddatlar</h3>
               <p className="text-xs text-muted-foreground">
-                MCHJ uchun barcha qonuniy soliqlar va ularning topshirilish muddatlari monitoringi
+                MCHJ uchun barcha soliqlar va ularning topshirilish muddatlari monitoringi
               </p>
             </div>
             <span className="text-xs text-muted-foreground">
               Bugungi sana: <strong>{calData?.today || new Date().toISOString().slice(0, 10)}</strong>
             </span>
           </div>
+
+          {/* Soliq portalidan kelgan muhim xabarlar & ogohlantirishlar */}
+          {calData?.alerts && calData.alerts.length > 0 && (
+            <div className="space-y-3">
+              {calData.alerts.map((alt) => (
+                <div
+                  key={alt.id}
+                  className={cn(
+                    'flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between',
+                    alt.level === 'warning' &&
+                      'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200',
+                    alt.level === 'error' &&
+                      'border-red-300 bg-red-50 text-red-950 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200',
+                    alt.level === 'info' &&
+                      'border-blue-300 bg-blue-50 text-blue-950 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200',
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <AlertCircle
+                      className={cn(
+                        'size-5 shrink-0 mt-0.5',
+                        alt.level === 'warning' && 'text-amber-600 dark:text-amber-400',
+                        alt.level === 'error' && 'text-red-600 dark:text-red-400',
+                        alt.level === 'info' && 'text-blue-600 dark:text-blue-400',
+                      )}
+                    />
+                    <div className="space-y-1 text-xs">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <strong className="font-bold text-sm">{alt.title}</strong>
+                        {alt.reportNumber && (
+                          <Badge variant="neutral" className="text-[10px] font-mono">
+                            № {alt.reportNumber}
+                          </Badge>
+                        )}
+                        {alt.packet && (
+                          <Badge variant="neutral" className="text-[10px] font-mono">
+                            Пакет {alt.packet}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="leading-relaxed opacity-95">{alt.message}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2 self-end sm:self-center">
+                    {alt.id === 'sep_premature_error' && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleDownloadExcel('2026-08')}
+                        disabled={isDownloadingExcel}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs"
+                      >
+                        <FileSpreadsheet className="size-3.5" />
+                        Avgust Excel shabloni
+                      </Button>
+                    )}
+                    {alt.id === 'turnover_auto_draft' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setActiveTab('turnover')}
+                        className="text-xs"
+                      >
+                        Aylanma soliqqa o&apos;tish
+                      </Button>
+                    )}
+                    <a
+                      href="https://oldmy.soliq.uz"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+                    >
+                      <ExternalLink className="size-3" />
+                      Soliqqa kirish
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {calData?.hasOverdue && (
             <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
@@ -405,19 +545,24 @@ export function TaxReportsSection() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             {calData?.items.map((item) => {
               const isOverdue = item.status === 'overdue';
               const isSubmitted = item.status === 'submitted';
-              const isUrgent = !isSubmitted && item.daysRemaining <= 3 && item.daysRemaining >= 0;
+              const isError = item.status === 'error';
+              const isDraft = item.status === 'draft';
+              const isUrgent =
+                !isSubmitted && item.daysRemaining <= 3 && item.daysRemaining >= 0;
 
               return (
                 <Card
                   key={item.id}
                   className={cn(
                     'flex flex-col justify-between p-4 transition-all',
+                    isError && 'border-amber-400 bg-amber-500/5 dark:border-amber-800',
+                    isDraft && 'border-blue-300 bg-blue-500/5 dark:border-blue-900',
                     isOverdue && 'border-red-300 bg-red-500/5 dark:border-red-900',
-                    isUrgent && 'border-amber-300 bg-amber-500/5 dark:border-amber-900',
+                    isUrgent && !isError && 'border-amber-300 bg-amber-500/5 dark:border-amber-900',
                     isSubmitted && 'border-emerald-300 bg-emerald-500/5 dark:border-emerald-900',
                   )}
                 >
@@ -428,7 +573,9 @@ export function TaxReportsSection() {
                           'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold',
                           isSubmitted && 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
                           isOverdue && 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300',
-                          !isSubmitted && !isOverdue && 'bg-primary/10 text-primary',
+                          isDraft && 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300',
+                          isError && 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200',
+                          !isSubmitted && !isOverdue && !isDraft && !isError && 'bg-primary/10 text-primary',
                         )}
                       >
                         <Clock className="size-3" />
@@ -437,7 +584,15 @@ export function TaxReportsSection() {
 
                       {isSubmitted ? (
                         <Badge variant="success">
-                          <CheckCircle2 className="size-3" /> Topshirilgan
+                          <CheckCircle2 className="size-3" /> Soliqda qabul
+                        </Badge>
+                      ) : isError ? (
+                        <Badge variant="danger">
+                          <AlertCircle className="size-3" /> Soliqda xatolik
+                        </Badge>
+                      ) : isDraft ? (
+                        <Badge variant="neutral" className="bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                          <Clock className="size-3" /> Avtomat qoralama
                         </Badge>
                       ) : isOverdue ? (
                         <Badge variant="danger">
@@ -453,9 +608,25 @@ export function TaxReportsSection() {
                     </div>
 
                     <div>
-                      <h4 className="text-sm font-bold text-foreground">{item.title}</h4>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="text-sm font-bold text-foreground">{item.title}</h4>
+                        {item.packet && (
+                          <Badge variant="neutral" className="text-[10px] font-mono">
+                            {item.packet}
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">{item.subtitle}</p>
                     </div>
+
+                    {item.soliqSync?.reportNumber && (
+                      <div className="flex items-center justify-between rounded-lg border border-border/80 bg-background/80 px-2.5 py-1.5 text-[11px]">
+                        <span className="text-muted-foreground">Soliq hisobot №:</span>
+                        <span className="font-mono font-bold text-foreground">
+                          {item.soliqSync.reportNumber}
+                        </span>
+                      </div>
+                    )}
 
                     <div className="rounded-lg bg-muted/60 p-2.5 text-xs space-y-1">
                       <div className="flex justify-between text-muted-foreground">
@@ -481,12 +652,19 @@ export function TaxReportsSection() {
                       variant={isOverdue ? 'destructive' : isSubmitted ? 'outline' : 'default'}
                       className="w-full text-xs"
                       onClick={() => {
-                        if (item.type === 'salary_ndfl') setActiveTab('salary');
-                        else if (item.type === 'vat') setActiveTab('vat');
-                        else if (item.type === 'profit_tax') setActiveTab('profit');
+                        if (item.id === 'salary_ndfl') setActiveTab('salary');
+                        else if (item.id === 'turnover_tax') setActiveTab('turnover');
+                        else if (item.id === 'vat') setActiveTab('vat');
+                        else if (item.id === 'profit_tax') setActiveTab('profit');
                       }}
                     >
-                      {isSubmitted ? 'Hisobotni ko\u02BBrib chiqish' : 'Ushbu hisobotni to\u02BBldirish'}
+                      {item.id === 'salary_ndfl'
+                        ? 'Xodimlar & Excel shablon'
+                        : item.id === 'turnover_tax'
+                          ? "Aylanma soliqni ko'rish"
+                          : isSubmitted
+                            ? "Hisobotni ko'rish"
+                            : "Ko'rib chiqish"}
                     </Button>
                   </div>
                 </Card>
@@ -519,6 +697,66 @@ export function TaxReportsSection() {
             </div>
           </Card>
 
+          {/* Sentyabr premature xatolik ogohlantirishi & Avgust davrini tanlash */}
+          <div className="rounded-xl border border-amber-300 bg-amber-50/80 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="size-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+              <div className="space-y-1.5 text-xs text-amber-950 dark:text-amber-200 w-full">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <strong className="font-bold text-sm">
+                      Muhim: 15-sentyabrgacha Avgust 2026 oyi hisoboti topshiriladi!
+                    </strong>
+                    <Badge variant="neutral" className="text-[10px] font-mono">
+                      Пакет 11101_20
+                    </Badge>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    Soliqdagi rad sababi: &quot;Ҳисобот даври тугамаган&quot;
+                  </span>
+                </div>
+                <p className="leading-relaxed">
+                  Agar oldin yuborilgan hisobotda <em>&quot;Ҳисобот даври тугамаган&quot;</em> xatoligi berilgan bo&apos;lsa,
+                  buning sababi Soliq saytida davr sifatida <strong>&quot;Сентябрь&quot;</strong> tanlanganidir.
+                  O&apos;zbekiston Soliq kodeksiga binoan, 15-sentyabrgacha o&apos;tgan oy —{' '}
+                  <strong>&quot;Август&quot;</strong> oyi hisoboti topshiriladi. Sentyabr oyi hisoboti esa 1-oktyabrdan ochiladi.
+                </p>
+                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-amber-200/60 dark:border-amber-900/40">
+                  <span className="text-[11px] font-semibold">
+                    Davrni tanlang:
+                  </span>
+                  <select
+                    value={salaryPeriod}
+                    onChange={(e) => setSalaryPeriod(e.target.value)}
+                    className="h-8 rounded-lg border border-input bg-background px-2.5 text-xs font-semibold outline-none"
+                  >
+                    <option value="2026-08">2026-08 (Avgust — Hozir topshirilishi shart)</option>
+                    <option value="2026-09">2026-09 (Sentyabr — 1-oktyabrdan)</option>
+                    <option value="2026-07">2026-07 (Iyul)</option>
+                  </select>
+                  <Button
+                    size="sm"
+                    onClick={() => handleDownloadExcel(salaryPeriod)}
+                    disabled={isDownloadingExcel}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8"
+                  >
+                    <FileSpreadsheet className="size-3.5" />
+                    {salaryPeriod} uchun Excel yuklab olish
+                  </Button>
+                  <a
+                    href="https://oldmy.soliq.uz"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+                  >
+                    <ExternalLink className="size-3" />
+                    my.soliq.uz ga kirish
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Xodimlar ro'yxati va tahrirlash */}
           <div className="space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -533,13 +771,13 @@ export function TaxReportsSection() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleDownloadExcel}
+                  onClick={() => handleDownloadExcel(salaryPeriod)}
                   disabled={isDownloadingExcel}
                   className="border-emerald-500/30 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
                   title="my.soliq.uz ga yuklash uchun 11101_20 shablonini to'ldirib yuklab olish"
                 >
                   <FileSpreadsheet className="size-3.5 text-emerald-600" />
-                  {isDownloadingExcel ? 'Yuklanmoqda...' : 'Soliq Excel shabloni (11101_20)'}
+                  {isDownloadingExcel ? 'Yuklanmoqda...' : `Excel shablon (${salaryPeriod})`}
                 </Button>
                 <Button
                   variant="outline"
@@ -799,7 +1037,7 @@ export function TaxReportsSection() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleDownloadExcel}
+                    onClick={() => handleDownloadExcel()}
                     disabled={isDownloadingExcel}
                     className="border-emerald-500/30 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
                     title="my.soliq.uz ga yuklash uchun 11101_20 shablonini to'ldirib yuklab olish"
@@ -1281,33 +1519,72 @@ export function TaxReportsSection() {
         </div>
       )}
 
-      {/* ─── TAB 5: AYLANMA SOLIG'I 4% (MUQOBIL TIZIM) ─── */}
+      {/* ─── TAB 3: AYLANMA SOLIG'I 4% (ASOSIY TIZIM) ─── */}
       {activeTab === 'turnover' && (
         <div className="space-y-6">
           <Card className="border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
             <div className="flex items-start gap-3">
               <Info className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400 mt-0.5" />
               <div className="space-y-1 text-xs text-emerald-900 dark:text-emerald-200">
-                <strong className="font-semibold text-sm">
-                  Aylanmadan olinadigan soliq (AOS — 4%) — Qonuniy asos:
-                </strong>
+                <div className="flex items-center gap-2">
+                  <strong className="font-semibold text-sm">
+                    &quot;TILAV&quot; MCHJ Asosiy Solig&apos;i: Aylanmadan olinadigan soliq (4%)
+                  </strong>
+                  <Badge variant="success" className="text-[10px]">
+                    Soddalashtirilgan tizim
+                  </Badge>
+                </div>
                 <p>
+                  • <strong>Soliq kodi:</strong> 10104_36 (Айланмадан олинадиган солиқ ҳисоб-китоби).
+                  <br />
                   • <strong>Muddat:</strong> Har oyning 15-sanasidan kechiktirmay (Soliq kodeksi 470-modda).
                   <br />
-                  • <strong>Kimlar uchun:</strong> Yillik aylanmasi 1 milliard so&apos;mgacha bo&apos;lgan soddalashtirilgan tizimdagi MCHJlar.
+                  • <strong>Afzalligi:</strong> QQS (12%) va Foyda solig&apos;i (15%) to&apos;lanmaydi! Faqat oylik aylanmaning 4% to&apos;lanadi.
                   <br />
-                  • <strong>Formula:</strong> Aylanma (tushum) × 4%. Xarajatlar chegirilmaydi, QQS va Foyda solig&apos;i o&apos;rniga yagona to&apos;lov to&apos;lanadi.
+                  • <strong>Soliq portali:</strong> my.soliq.uz tizimi har oy onlayn kassa cheklari va hisobvaraq-fakturalar asosida hisobot qoralamasini avtomatik shakllantiradi.
                 </p>
               </div>
             </div>
           </Card>
+
+          {/* Soliq Avtomat Qoralama Kartasi */}
+          <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1 text-xs">
+                <div className="flex items-center gap-2">
+                  <strong className="text-sm font-bold text-foreground">
+                    Soliq portalida avtomatik shakllangan hisobot
+                  </strong>
+                  <Badge variant="neutral" className="font-mono text-[10px]">
+                    № 240491220
+                  </Badge>
+                  <Badge variant="neutral" className="bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 text-[10px]">
+                    Автомат Қоралама
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground">
+                  Пакет 10104_36 (Ойлик, Август 2026). my.soliq.uz ga kirib, shakllangan tushumni tekshirib tasdiqlash tugmasini bosish kifoya.
+                </p>
+              </div>
+
+              <a
+                href="https://oldmy.soliq.uz"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+              >
+                <ExternalLink className="size-3.5" />
+                my.soliq.uz da ochish
+              </a>
+            </div>
+          </div>
 
           <Card className="p-5 space-y-5">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div>
                 <h4 className="text-sm font-bold text-foreground">Aylanma Solig&apos;i Kalkulyatori</h4>
                 <p className="text-xs text-muted-foreground">
-                  Agar korxonangiz soddalashtirilgan tizimga o&apos;tsa yoki hisob-kitobni solishtirmoqchi bo&apos;lsangiz
+                  Platforma komissiyasi yoki realizatsiya aylanmasi bo&apos;yicha to&apos;lanadigan soliq
                 </p>
               </div>
 
