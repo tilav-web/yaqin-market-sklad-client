@@ -1,12 +1,24 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp, Pencil, Plus, RefreshCw, ReceiptText, Sparkles, Tags, TriangleAlert } from 'lucide-react';
+import {
+  CalendarClock,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Plus,
+  RefreshCw,
+  ReceiptText,
+  Sparkles,
+  Tags,
+  TriangleAlert,
+} from 'lucide-react';
 import Link from 'next/link';
 import { Fragment, useState } from 'react';
 
 import { PageHeader, StatPill } from '@/components/admin/page-header';
 import { Pagination } from '@/components/admin/pagination';
+import { TaxReportsSection } from '@/components/admin/fiscal-tax-reports';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, Input } from '@/components/ui/card';
@@ -673,16 +685,17 @@ function MissingProductsSection() {
 
 /* ─── Sahifa ─── */
 
-type Tab = 'receipts' | 'categories' | 'missing';
+type Tab = 'tax-reports' | 'receipts' | 'categories' | 'missing';
 
 const TABS: { key: Tab; label: string; icon: typeof ReceiptText }[] = [
-  { key: 'receipts', label: 'Cheklar', icon: ReceiptText },
+  { key: 'tax-reports', label: "MChJ Hisobotlari & Eslatma", icon: CalendarClock },
+  { key: 'receipts', label: 'Fiskal cheklar', icon: ReceiptText },
   { key: 'categories', label: 'Soliq toifalari (MXIK)', icon: Tags },
   { key: 'missing', label: 'MXIK biriktirilmagan', icon: TriangleAlert },
 ];
 
 export default function FiscalPage() {
-  const [tab, setTab] = useState<Tab>('receipts');
+  const [tab, setTab] = useState<Tab>('tax-reports');
 
   const missingQ = useQuery<{ total: number }>({
     queryKey: ['admin', 'fiscal-missing-products', 1],
@@ -690,11 +703,16 @@ export default function FiscalPage() {
       (await api.get('/admin/fiscal/products-missing-tax-info', { params: { page: 0, limit: PAGE_SIZE } })).data,
   });
 
+  const calendarQ = useQuery<{ hasOverdue: boolean; hasUrgent: boolean }>({
+    queryKey: ['admin', 'tax-reports-calendar'],
+    queryFn: async () => (await api.get('/admin/fiscal/tax-reports/calendar')).data,
+  });
+
   return (
     <div className="space-y-4 p-6">
       <PageHeader
-        title="Soliq / Fiskal cheklar"
-        description="Komissioner modelida sotuvchi nomidan chiqariladigan cheklar, MXIK katalogi va biriktirish"
+        title="Soliq, Hisobotlar & Fiskal tizim"
+        description="MChJ soliq hisobotlari, taqvim eslatmalari, 0.25 stavka xodimlar hisobi va komissioner cheklari"
       />
 
       <div className="flex flex-wrap gap-1.5">
@@ -709,6 +727,16 @@ export default function FiscalPage() {
           >
             <t.icon className="size-4" />
             {t.label}
+            {t.key === 'tax-reports' && (calendarQ.data?.hasOverdue || calendarQ.data?.hasUrgent) && (
+              <span
+                className={cn(
+                  'ml-0.5 rounded-full px-1.5 text-[0.65rem] font-bold text-white',
+                  calendarQ.data?.hasOverdue ? 'bg-red-500 animate-pulse' : 'bg-amber-500',
+                )}
+              >
+                {calendarQ.data?.hasOverdue ? "Muddati o'tgan!" : 'Eslatma'}
+              </span>
+            )}
             {t.key === 'missing' && (missingQ.data?.total ?? 0) > 0 && (
               <span className="ml-0.5 rounded-full bg-amber-500 px-1.5 text-[0.65rem] font-bold text-white">
                 {missingQ.data!.total}
@@ -718,6 +746,7 @@ export default function FiscalPage() {
         ))}
       </div>
 
+      {tab === 'tax-reports' && <TaxReportsSection />}
       {tab === 'receipts' && <ReceiptsSection />}
       {tab === 'categories' && <TaxCategoriesSection />}
       {tab === 'missing' && <MissingProductsSection />}
