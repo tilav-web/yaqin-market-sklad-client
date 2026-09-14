@@ -324,8 +324,8 @@ export function TaxReportsSection() {
               <Badge variant="neutral" className="font-mono">
                 PINFL: {calData?.companyInfo.pinfl || '52302035660028'}
               </Badge>
-              <Badge variant="warning" className="font-medium">
-                {calData?.companyInfo.taxRegime || 'Umumbelgilangan soliq tizimi (Foyda 15% + QQS 12%)'}
+              <Badge variant="success" className="font-medium">
+                {calData?.companyInfo.taxRegime || 'Soddalashtirilgan tizim (Aylanmadan olinadigan soliq — 4%)'}
               </Badge>
             </div>
           </div>
