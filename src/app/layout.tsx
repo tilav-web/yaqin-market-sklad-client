@@ -70,6 +70,9 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  verification: {
+    google: 'u9FOdtJBPH6drKT-gvoUtVVhoiiu7HvSjw28U4VmGUc',
+  },
 };
 
 const orgJsonLd = {
